@@ -1,0 +1,39 @@
+#login-container {
+    position: absolute;
+    display: block;
+    margin: 0 auto;
+    padding: 50px;
+    width: 350px;
+    top: 50%;
+    left: 50%;
+    -ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+    background-color: $login_panel_color;
+    border: 1px solid $login_border_color;
+
+    h2 {
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .login-input {
+        position: relative;
+        display: block;
+        padding: 5px;
+        width: 100%;
+        margin-top: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.5);
+    }
+
+    input[type=submit] {
+        width: 250px;
+        @include button-style;
+
+        &:hover {
+            background-color: $button_hover_fill_color;
+        }
+    }
+}

@@ -1,0 +1,92 @@
+#wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1280px;
+    min-height: 100vh;
+    margin: 0 auto;
+}
+
+header {
+    position: relative;
+    padding: 10px;
+    flex: 0 1 auto;
+    order: 1;
+    text-align: right;
+    background-color: $header_bg_color;
+    border-bottom: 1px solid $header_border_color;
+}
+
+.flex-container {
+    position: relative;
+    display: flex;
+    flex: 1 0 auto;
+    order: 2;
+    flex-direction: row;
+    justify-content: center;
+}
+
+main {
+    position: relative;
+    display: inline-block;
+    padding: 10px;
+    flex: 4 1 100%;
+    order: 2;
+    align-items: flex-start;
+    background-color: $main_bg_color;
+}
+
+.addBtn {
+    display: block;
+    width: 250px;
+    @include button-style;
+}
+.submitBtn {
+    display: block;
+    width: 250px;
+    @include button-style;
+}
+.upload-btn {
+    display: block;
+    width: 250px;
+    @include button-style;
+    padding: 5px 10px;
+}
+
+div.viewSelect {
+    margin-bottom: 20px;
+
+    button.viewSelect-btn {
+        @include button-style;
+
+        &.active {
+            background-color: $button_active_fill_color;
+        }
+    }
+}
+
+div.viewPanel {
+    span.headerText {
+        display: block;
+        width: 100%;
+        margin: 40px 0 10px;
+        font-size: 32px;
+        font-weight: 700;
+    }
+}
+
+#alertMsg, #errorMsg {
+    position: relative;
+    width: auto;
+    padding: 10px;
+    margin: -10px;
+    color: $message_font_color;
+    border-bottom: 1px solid $message_border_color;
+}
+
+#alertMsg {
+    background-color: $alert_bg_color;
+}
+#errorMsg {
+    background-color: $error_bg_color;
+}

@@ -1,0 +1,125 @@
+$table_thead_padding: 10px;
+$table_tbody_padding: 10px;
+
+$roster-table_cell_width: 52px;
+
+
+.table-wrapper {
+    overflow: auto;
+
+    > table {
+        width: 600px;
+        margin: 0 auto;
+        font-family: $font_rubik, sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        color: $table_row_text_color;
+        background-color: $table_row_odd_bg_color;
+        border-collapse: collapse;
+        border: 1px solid $table_row_border_color;
+
+        @include for-tablet-portrait-up {
+            font-size: 16px;
+        }
+
+        thead {
+            font-weight: 700;
+
+            > tr {
+                color: $table_header_text_color;
+                background-color: $table_header_bg_color;
+
+                th {
+                    padding: $table_thead_padding;
+                    text-align: left;
+                    background-color: $table_header_bg_color;
+                }
+            }
+        }
+
+        tbody {
+            tr {
+                border-collapse: collapse;
+                border: 1px solid $table_row_border_color;
+    
+                td {
+                    padding: $table_tbody_padding;
+                    text-align: left;
+                }
+
+                td:first-child {
+                    border-right: 1px solid $table_row_border_color;
+                }
+            }
+    
+            tr:nth-child(odd) {
+                background-color: $table_row_odd_bg_color;
+
+                td {
+                    background-color: $table_row_odd_bg_color;
+                }
+            }
+            tr:nth-child(even) {
+                background-color: $table_row_even_bg_color;
+
+                td {
+                    background-color: $table_row_even_bg_color;
+                }
+            }
+        }
+        
+        &.large {
+            width: 800px;
+        }
+        &.small {
+            width: 400px;
+        }
+    }
+
+    > .roster-table {
+        thead {
+            tr { 
+                th {
+                    width: $roster-table_cell_width;
+                    text-align: center;
+
+                    &:first-child {
+                        position: absolute;
+                        display: block;
+                        width: 200px;
+                        text-align: left;
+
+                        @include for-tablet-portrait-up {
+                            //width: auto;
+                        }
+                    }
+                }
+            }
+        }
+
+        tbody { 
+            tr { 
+                td {
+                    width: $roster-table_cell_width;
+                    text-align: center;
+
+                    &:first-child {
+                        position: absolute;
+                        display: block;
+                        width: 200px;
+                        text-align: left;
+            
+                        @include for-tablet-portrait-up {
+                            //width: auto;
+                        }
+                    }
+                }
+            }
+        }
+
+        &.goaltender-table {
+            margin: 0 auto;
+        }
+    }
+}
+

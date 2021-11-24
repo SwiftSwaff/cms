@@ -1,0 +1,20 @@
+#instagram-widget {
+    height: 450px !important;
+    overflow: auto;
+}
+
+#twitter-widget {
+    height: 450px !important;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.instagram-media {
+    min-width: 160px !important;
+    border: 0 !important;
+}
+.instagram-media-rendered {
+    margin: 0 auto;
+    max-width: 100% !important;
+    width: 100% !important;
+}

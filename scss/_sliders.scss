@@ -1,0 +1,48 @@
+#banner {
+    display: none;
+    position: relative;
+    margin: 0;
+    order: 1;
+    flex: 0 1 auto;
+    background-color: #222;
+
+    @include for-tablet-portrait-up {
+        display: block;
+    }
+
+    #main-slider {
+        width: 300px;
+        margin: 0 auto;
+
+        @include for-tablet-portrait-up {
+            width: 600px;
+        }
+        @include for-tablet-landscape-up {
+            width: 900px;
+        }
+        @include for-desktop-up {
+            width: 1200px;
+        }
+
+        
+        .keen-slider__slide {
+            img {
+                width: 100px;
+                height: 66px;
+
+                @include for-tablet-portrait-up {
+                    width: 200px;
+                    height: 133px;
+                }
+                @include for-tablet-landscape-up {
+                    width: 300px;
+                    height: 200px;
+                }
+                @include for-desktop-up {
+                    width: 400px;
+                    height: 266px;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,36 @@
+@import './_responsive';
+@import './_colors';
+@import './_fonts';
+@import './_typography';
+
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: $body_background_color;
+    font-family: $font_sourceSansPro, sans-serif;
+    
+    &.noscroll {
+        overflow: hidden;
+    }
+}
+button {
+    all: unset;
+    cursor: pointer;
+}
+
+// common imports
+@import './_common';
+@import './_nav';
+@import './_sliders';
+@import './_news';
+@import './_social-media';
+@import './_partners';
+@import './_tables';
+@import './_gallery';

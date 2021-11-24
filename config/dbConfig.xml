@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<databases>
+    <staging-database>
+        <host>localhost</host>
+        <user>root</user>
+        <pass></pass>
+        <name>league</name>
+    </staging-database>
+    <!--removed live-database due to public github for demonstration-->
+</databases>

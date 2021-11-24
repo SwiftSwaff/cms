@@ -1,0 +1,44 @@
+@import './_responsive';
+@import './_colors';
+@import './_fonts';
+
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: $body_bg_color;
+    font-family: $font_lato, sans-serif;
+}
+button {
+    all: unset;
+    cursor: pointer;
+}
+
+@mixin button-style {
+    padding: 10px;
+    text-align: center;
+    text-decoration: none;
+    border: 1px solid $button_border_color;
+    color: $button_font_color;
+    background-color: $button_fill_color;
+
+    &:hover {
+        background-color: $button_hover_fill_color;
+    }
+
+    &:active {
+        background-color: $button_hover_fill_color;
+    }
+}
+
+// common imports
+@import './_common';
+@import './_login';
+@import './_nav';
+@import './_lists';
+@import './_forms';

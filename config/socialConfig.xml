@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<socialmedia>
+    <facebook>
+        <url/>
+    </facebook>
+    <twitter>
+        <url/>
+    </twitter>
+    <instagram>
+        <url/>
+        <featured></featured>
+    </instagram>
+</socialmedia>

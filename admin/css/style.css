@@ -1,0 +1,507 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: white;
+  font-family: "Lato", sans-serif;
+}
+
+button {
+  all: unset;
+  cursor: pointer;
+}
+
+#wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1280px;
+  min-height: 100vh;
+  margin: 0 auto;
+}
+
+header {
+  position: relative;
+  padding: 10px;
+  flex: 0 1 auto;
+  order: 1;
+  text-align: right;
+  background-color: #aaaaaa;
+  border-bottom: 1px solid #000022;
+}
+
+.flex-container {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+  order: 2;
+  flex-direction: row;
+  justify-content: center;
+}
+
+main {
+  position: relative;
+  display: inline-block;
+  padding: 10px;
+  flex: 4 1 100%;
+  order: 2;
+  align-items: flex-start;
+  background-color: #dddddd;
+}
+
+.addBtn {
+  display: block;
+  width: 250px;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #000022;
+  color: black;
+  background-color: white;
+}
+.addBtn:hover {
+  background-color: #9999ff;
+}
+.addBtn:active {
+  background-color: #9999ff;
+}
+
+.submitBtn {
+  display: block;
+  width: 250px;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #000022;
+  color: black;
+  background-color: white;
+}
+.submitBtn:hover {
+  background-color: #9999ff;
+}
+.submitBtn:active {
+  background-color: #9999ff;
+}
+
+.upload-btn {
+  display: block;
+  width: 250px;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #000022;
+  color: black;
+  background-color: white;
+  padding: 5px 10px;
+}
+.upload-btn:hover {
+  background-color: #9999ff;
+}
+.upload-btn:active {
+  background-color: #9999ff;
+}
+
+div.viewSelect {
+  margin-bottom: 20px;
+}
+div.viewSelect button.viewSelect-btn {
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #000022;
+  color: black;
+  background-color: white;
+}
+div.viewSelect button.viewSelect-btn:hover {
+  background-color: #9999ff;
+}
+div.viewSelect button.viewSelect-btn:active {
+  background-color: #9999ff;
+}
+div.viewSelect button.viewSelect-btn.active {
+  background-color: #9999ff;
+}
+
+div.viewPanel span.headerText {
+  display: block;
+  width: 100%;
+  margin: 40px 0 10px;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+#alertMsg, #errorMsg {
+  position: relative;
+  width: auto;
+  padding: 10px;
+  margin: -10px;
+  color: black;
+  border-bottom: 1px solid #222222;
+}
+
+#alertMsg {
+  background-color: rgba(100, 100, 0, 0.4);
+}
+
+#errorMsg {
+  background-color: rgba(100, 0, 0, 0.4);
+}
+
+#login-container {
+  position: absolute;
+  display: block;
+  margin: 0 auto;
+  padding: 50px;
+  width: 350px;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  background-color: #dddddd;
+  border: 1px solid #000022;
+}
+#login-container h2 {
+  margin-bottom: 20px;
+}
+#login-container .form-group {
+  margin-bottom: 20px;
+}
+#login-container .login-input {
+  position: relative;
+  display: block;
+  padding: 5px;
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+#login-container input[type=submit] {
+  width: 250px;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #000022;
+  color: black;
+  background-color: white;
+}
+#login-container input[type=submit]:hover {
+  background-color: #9999ff;
+}
+#login-container input[type=submit]:active {
+  background-color: #9999ff;
+}
+#login-container input[type=submit]:hover {
+  background-color: #9999ff;
+}
+
+aside#navigation {
+  position: relative;
+  display: block;
+  padding: 10px;
+  flex: 1 0 200px;
+  order: 1;
+  align-items: flex-start;
+  background-color: #000022;
+}
+aside#navigation ul {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  list-style-type: none;
+}
+aside#navigation ul li.adminNavHeader {
+  margin: 20px 0 10px;
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+}
+aside#navigation ul li.adminNavOption {
+  padding-left: 10px;
+  color: black;
+}
+aside#navigation ul li.adminNavOption a {
+  position: relative;
+  display: block;
+  margin-bottom: 5px;
+  padding: 10px;
+  width: 100%;
+  text-decoration: none;
+  color: black;
+  background-color: white;
+  font-weight: 600;
+}
+aside#navigation ul li.adminNavOption a:hover {
+  background-color: #9999ff;
+}
+aside#navigation ul li.adminNavOption a:active {
+  background-color: #9999ff;
+}
+aside#navigation ul li.adminNavOption:last-child {
+  margin-top: auto;
+}
+aside#navigation ul li.adminNavOption:last-child a {
+  background-color: #989898;
+}
+
+ul.archiveList {
+  margin: 20px 0;
+  list-style-type: none;
+  border: 1px solid #000022;
+  background-color: white;
+}
+ul.archiveList li {
+  position: relative;
+  border-bottom: 1px solid #000022;
+}
+ul.archiveList li:last-child {
+  border-bottom: none;
+}
+ul.archiveList li a.list-elem {
+  position: relative;
+  display: block;
+  padding: 10px;
+  text-decoration: none;
+  color: black;
+}
+ul.archiveList li a.delBtn {
+  position: absolute;
+  display: block;
+  width: 100px;
+  top: 0;
+  right: 0;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #000022;
+  color: black;
+  background-color: white;
+  border-width: 0 0 0 1px;
+}
+ul.archiveList li a.delBtn:hover {
+  background-color: #9999ff;
+}
+ul.archiveList li a.delBtn:active {
+  background-color: #9999ff;
+}
+
+form#contentForm {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 1010px;
+  margin: 50px 0 0 50px;
+}
+form#contentForm h1 {
+  margin-bottom: 10px;
+}
+form#contentForm .contentColumn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 50px;
+}
+form#contentForm .contentRow {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+form#contentForm label {
+  position: relative;
+  display: block;
+  flex: 0 1 150px;
+  font-size: 20px;
+  font-weight: 500;
+}
+form#contentForm input {
+  position: relative;
+  display: block;
+  flex: 0 1 150px;
+  padding: 10px;
+}
+form#contentForm input[type=number] {
+  width: 65px;
+  flex: 0 1 65px;
+}
+form#contentForm input[type=checkbox] {
+  margin-left: 10px;
+  flex: 0 1 auto;
+}
+form#contentForm input[type=datetime-local] {
+  flex: 0 1 220px;
+}
+form#contentForm input[type=submit] {
+  width: 300px;
+  margin-top: 20px;
+  flex: 0 1 auto;
+}
+form#contentForm textarea {
+  position: relative;
+  display: block;
+  flex: 0 1 auto;
+  margin: 20px 0 10px 0;
+}
+form#contentForm select {
+  position: relative;
+  display: block;
+  flex: 0 1 150px;
+  padding: 10px;
+}
+form#contentForm #upload-preview {
+  min-width: 300px;
+  max-width: 800px;
+  min-height: 300px;
+  max-height: 600px;
+  border: 1px solid #000022;
+  background-color: #454545;
+}
+
+div.imageSelect {
+  min-width: 500px;
+}
+div.imageSelect table.imageSelect-tbl {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  border: 1px solid #aaaaaa;
+  border-collapse: collapse;
+}
+div.imageSelect table.imageSelect-tbl thead {
+  display: table;
+  width: calc(100% - 17px);
+}
+div.imageSelect table.imageSelect-tbl thead tr {
+  display: table;
+  width: 100%;
+  box-sizing: border-box;
+}
+div.imageSelect table.imageSelect-tbl thead tr th {
+  margin: 10px 0;
+  border: 1px solid #aaaaaa;
+  border-collapse: collapse;
+  padding: 10px;
+  white-space: nowrap;
+  color: white;
+  background-color: #222222;
+}
+div.imageSelect table.imageSelect-tbl thead tr th:nth-child(1) {
+  width: 200px;
+}
+div.imageSelect table.imageSelect-tbl thead tr th:nth-child(2) {
+  width: auto;
+  min-width: 200px;
+}
+div.imageSelect table.imageSelect-tbl thead tr th:nth-child(3) {
+  width: 70px;
+}
+div.imageSelect table.imageSelect-tbl thead tr th:nth-child(4) {
+  width: 70px;
+}
+div.imageSelect table.imageSelect-tbl thead tr th:nth-child(5) {
+  width: 200px;
+}
+div.imageSelect table.imageSelect-tbl thead tr th:nth-child(6) {
+  width: 200px;
+}
+div.imageSelect table.imageSelect-tbl tbody {
+  display: block;
+  width: 100%;
+  max-height: 600px;
+  overflow-y: scroll;
+}
+div.imageSelect table.imageSelect-tbl tbody tr {
+  display: table;
+  width: 100%;
+  box-sizing: border-box;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td {
+  margin: 10px 0;
+  border: 1px solid #aaaaaa;
+  border-collapse: collapse;
+  padding: 10px;
+  white-space: nowrap;
+  background-color: white;
+  border-bottom: none;
+  border-left: none;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td img {
+  display: block;
+  max-width: 200px;
+  margin: 0 auto;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td:nth-child(1) {
+  width: 200px;
+  height: 100px;
+  margin: 0;
+  padding: 0;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td:nth-child(2) {
+  width: auto;
+  min-width: 200px;
+  word-wrap: break-word;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td:nth-child(3) {
+  width: 70px;
+  text-align: center;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td:nth-child(4) {
+  width: 70px;
+  text-align: center;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td:nth-child(5) {
+  width: 200px;
+  text-align: center;
+}
+div.imageSelect table.imageSelect-tbl tbody tr td:nth-child(6) {
+  width: 200px;
+  text-align: center;
+}
+div.imageSelect table.imageSelect-tbl input {
+  text-align: center;
+}
+div.imageSelect table.imageSelect-tbl input[type=number] {
+  width: 50px;
+}
+div.imageSelect table.imageSelect-tbl input[type=number]::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+.tox.tox-tinymce {
+  width: 100%;
+}
+
+.spacer {
+  justify-content: space-between;
+}
+
+.v-center {
+  justify-content: center;
+}
+
+.v-left {
+  justify-content: flex-start;
+}
+
+.v-right {
+  justify-content: flex-end;
+}
+
+.twoCol {
+  width: 50%;
+}
+
+.threeCol {
+  width: 34%;
+}
+
+/*# sourceMappingURL=style.css.map */
