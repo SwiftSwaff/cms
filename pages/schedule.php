@@ -1,55 +1,60 @@
 <?php
-include getenv("DOCUMENT_ROOT") . "/db.php";
+include getenv("DOCUMENT_ROOT") . "/db/db.php";
 $MetaDescription = "The official source for the XLL schedule. Find schedule times and history.";
 
 function getSchedule($divID, $headerText) {
-    $tableHTML = "<h1 class='pageHeaderText'>{$headerText}</h1>"
-               . "<div class='table-wrapper'>"
-               .    "<table class='large'>"
-               .        "<thead>"
-               .            "<tr><th>#</th><th>Time</th><th colspan='2'>Home</th><th colspan='2'>Away</th></tr>"
-               .        "</thead>"
-               .        "<tbody>";
-
+    $tableHTML = "";
     $gameNum = 1;
-    $query = "SELECT S.Time, S.IsExhibition, S.Complete, H.Name, S.HomeTeamScore, A.Name, S.AwayTeamScore, H.Home "
-           . "FROM schedule S "
-           . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-           . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-           . "WHERE S.DivisionID = ? "
-           . "ORDER BY Time ASC ";
-    $types = "d";
-    $params = array($divID);
-    $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-    $stmt->bind_result($time, $exhibition, $complete, $homeTeamName, $homeTeamScore, $awayTeamName, $awayTeamScore, $location);
-    while ($stmt->fetch()) {
-        $dateStr = date("M jS g:i A", strtotime($time));
-
-        $rowStyle = "";
-        if ($exhibition && ($complete == "Yes")) {
-            $rowStyle = " style='background-color: rgba(255,214,99,0.5);'";
+    $sql = "SELECT S.game_time, S.is_exhibition, S.is_complete, 
+                H.name AS home_team_name, S.home_team_score, 
+                A.Name AS away_team_name, S.away_team_score, 
+                H.home_location 
+            FROM schedule S 
+            INNER JOIN teams H on H.id = S.home_team_id 
+            INNER JOIN teams A on A.id = S.away_team_id 
+            WHERE S.division_id = :divID 
+            ORDER BY S.game_time ASC ";
+    $params = array(":divID" => array("type" => PDO::PARAM_INT, "value" => $divID));
+    $result = DB::getInstance()->preparedQuery($sql, $params);
+    if ($result->rowCount() > 0) {
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+    
+            $dateStr = date("M jS g:i A", strtotime($game_time));
+    
+            $rowStyle = "";
+            if ($is_exhibition && ($is_complete == "Yes")) {
+                $rowStyle = " style='background-color: rgba(255,214,99,0.5);'";
+            }
+            else if ($is_exhibition) {
+                $rowStyle = " style='background-color: rgba(255,214,99,0.25);'";
+            }
+            else if ($is_complete == "Yes") {
+                $rowStyle = " style='background-color: rgba(70,140,70,0.5);'";
+            }
+    
+            $tableHTML.= "<tr>"
+                       .    "<td{$rowStyle}>{$gameNum}</td>"
+                       .    "<td{$rowStyle}>{$dateStr}</td>"
+                       .    "<td{$rowStyle}>{$home_team_name}</td><td{$rowStyle}> {$home_team_score}</td>"
+                       .    "<td{$rowStyle}>{$away_team_name}</td><td{$rowStyle}> {$away_team_score}</td>"
+                       . "</tr>";
+            $gameNum++;
         }
-        else if ($exhibition) {
-            $rowStyle = " style='background-color: rgba(255,214,99,0.25);'";
-        }
-        else if ($complete == "Yes") {
-            $rowStyle = " style='background-color: rgba(70,140,70,0.5);'";
-        }
-        else {}
-
-        $tableHTML.= "<tr>"
-                   .    "<td" . $rowStyle . ">{$gameNum}</td>"
-                   .    "<td" . $rowStyle . ">{$dateStr}</td>"
-                   .    "<td" . $rowStyle . ">{$homeTeamName}</td><td" . $rowStyle . "> {$homeTeamScore}</td>"
-                   .    "<td" . $rowStyle . ">{$awayTeamName}</td><td" . $rowStyle . "> {$awayTeamScore}</td>"
-                   . "</tr>";
-        $gameNum++;
+    
+        return "<h1 class='pageHeaderText'>{$headerText}</h1>"
+             . "<div class='table-wrapper'>"
+             .      "<table class='large'>"
+             .          "<thead>"
+             .              "<tr><th>#</th><th>Time</th><th colspan='2'>Home</th><th colspan='2'>Away</th></tr>"
+             .          "</thead>"
+             .          "<tbody>{$tableHTML}</tbody>"
+             .      "</table>"
+             . "</div>";
     }
-    $stmt->close();
-
-    $tableHTML.= "</tbody></table></div>";
-
-    return $tableHTML;
+    else {
+        return "<h1 class='pageHeaderText'>Schedule Coming Soon!</h1>";
+    }
 }
 
 $path = ltrim($_SERVER['REQUEST_URI'], '/');
@@ -61,17 +66,10 @@ if ($page == "schedule") {
     switch ($param) {
         case "summer2021":
             $main.= getSchedule(1, "Summer 2021 Schedule");
-            $main.= "<h6 style='text-align: center; margin-top: 10px;'><i>*All games played at <a target='_blank' href='https://goo.gl/maps/71gBVtTmb1LFP9L17'>Poirier Sport & Leisure Complex</a></i></h6>";
-            //$main.= "<h1 class='headerText'>Schedule coming soon!</h1>";
             break;
         case "winter2021":
             $main.= getSchedule(2, "Winter 2021 Senior Schedule");
-            $main.= "<h6 style='text-align: center; margin-top: 10px;'><i>*Games in orange are exhibition games. All games played at <a target='_blank' href='https://goo.gl/maps/71gBVtTmb1LFP9L17'>Poirier Sport & Leisure Complex</a></i></h6>";
             break;
-        /*case "league3":
-            //$main.= getSchedule(3, "League #3 Schedule");
-            $main.= "<h1 class='headerText'>Schedule coming soon!</h1>";
-            break;*/
         default:
             $showBanner = false;
             $showLeftSidebar = false;

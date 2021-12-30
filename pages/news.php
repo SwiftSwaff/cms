@@ -1,66 +1,70 @@
 <?php
-include getenv("DOCUMENT_ROOT") . "/db.php";
+include getenv("DOCUMENT_ROOT") . "/db/db.php";
 $MetaDescription = "The official source for news on the XLL. Get all the latest XLL news now!";
 
+//TODO: Eliminate re-use of this function shared between home.php & news.php
 function getNews($newsPostIdx, $newsPostNum, $fromAJAX) {
-    $articlesHTML = "";
-    $query = "SELECT ID, Title, Photo, DatePublished, DateEdited "
-           . "FROM news "
-           . "ORDER BY DatePublished DESC "
-           . "LIMIT ?, ? ";
-    $types = "dd";
-    $params = array($newsPostIdx, $newsPostNum);
-    $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-    $stmt->bind_result($id, $title, $photoDir, $datePub, $dateEdit);
-    while ($stmt->fetch()) {
-        $datePubStr = date("n/j/Y", strtotime($datePub));
-        $thumbnail = ($photoDir != null) ? "<img src='{$photoDir}' alt='{$title} Thumbnail' class='thumbnail' width=160 height=120>" : "";
+    $sql = "SELECT id, title, photo, date_published 
+            FROM news 
+            ORDER BY date_published DESC 
+            LIMIT :i, :num ";
+    $params = array(
+        ":i"   => array("type" => PDO::PARAM_INT, "value" => $newsPostIdx), 
+        ":num" => array("type" => PDO::PARAM_INT, "value" => $newsPostNum)
+    );
+    $result = DB::getInstance()->preparedQuery($sql, $params);
+    if ($result->rowCount() > 0) {
+        $articlesHTML = "";
 
-        $articlesHTML.= "<article class='previewArticle newsMode'>"
-                      . "<a href='news?id={$id}'>"
-                      .     "<div class='previewLeft'>{$thumbnail}</div>"
-                      .     "<div class='previewRight'>"
-                      .         "<span class='previewDate'>{$datePubStr}</span>"
-                      .         "<span class='previewHeaderText'>{$title}</span>"
-                      .         "<span class='previewContent'>[...]</span>"
-                      .     "</div>"
-                      . "</a>"
-                      . "</article>";
-    }
-    $stmt->close();
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
 
-    if ($articlesHTML == "") {
-        return false;
+            $datePubStr = date("n/j/Y", strtotime($date_published));
+            $thumbnail = ($photo != null) ? "<img src='{$photo}' alt='{$title} Thumbnail' class='thumbnail' width='240' height='180'>" : "";
+            $articlesHTML.= "<article class='previewArticle homeMode'>"
+                          . "<a href='news?id={$id}'>"
+                          .     "<div class='previewLeft'>{$thumbnail}</div>"
+                          .     "<div class='previewRight'>"
+                          .         "<span class='previewDate'>{$datePubStr}</span>"
+                          .         "<span class='previewHeaderText'>{$title}</span>"
+                          .         "<span class='previewContent'>[...]</span>"
+                          .     "</div>"
+                          . "</a>"
+                          . "</article>";
+        }
+
+        $html = "<div id='newsListWrapper'>" . $articlesHTML;
+        if (!$fromAJAX) {
+            $newsPostIdx += $newsPostNum;
+            $html.= "<div id='loadNewsArea'>"
+                  .     "<button class='loadNewsBtn'>Load More Articles</button>"
+                  .     "<input type='hidden' id='newsIdx' value='{$newsPostIdx}'>"
+                  .     "<input type='hidden' id='newsNum' value='{$newsPostNum}'>"
+                  . "</div>";
+        }
+        $html.= "</div>";
+        
+        return $html;
     }
-    
-    $html = "<div id='newsListWrapper'>" . $articlesHTML;
-    if (!$fromAJAX) {
-        $newsPostIdx += $newsPostNum;
-        $html.= "<div id='loadNewsArea'>"
-              .     "<button class='loadNewsBtn'>Load More Articles</button>"
-              .     "<input type='hidden' id='newsIdx' value='{$newsPostIdx}'>"
-              .     "<input type='hidden' id='newsNum' value='{$newsPostNum}'>"
-              . "</div>";
+    else {
+        return "<h1 class='pageHeaderText'>News Coming Soon!</h1>";
     }
-    $html.= "</div>";
-    
-    return $html;
 }
 
 function getNewsPost($newsPostID) {
     $html = "";
-    $query = "SELECT Title, Content, Photo, DatePublished, DateEdited "
-           . "FROM news "
-           . "WHERE ID = ? ";
-    $types = "d";
-    $params = array($newsPostID);
-    $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-    $stmt->bind_result($title, $content, $photoDir, $datePub, $dateEdit);
-    while ($stmt->fetch()) {
+    $sql = "SELECT title, content, photo, date_published, date_edited 
+            FROM news 
+            WHERE id = :id ";
+    $params = array(":id" => array("type" => PDO::PARAM_INT, "value" => $newsPostID));
+    $result = DB::getInstance()->preparedQuery($sql, $params);
+    if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+        extract($row);
+
         $contentHTML = html_entity_decode($content, ENT_COMPAT, "UTF-8");
-        $datePubStr = "Published on " . date("F j, Y", strtotime($datePub)) . " at " . date("g:i a", strtotime($datePub));
-        $dateEditStr = ($dateEdit != $datePub) ? "Edited on " . date("F j, Y", strtotime($dateEdit)) . " at " . date("g:i a", strtotime($dateEdit)) . "" : "";
-        $bannerIncluded = ($photoDir != null) ? "style='background-image: url({$photoDir})'" : "";
+        $datePubStr = "Published on " . date("F j, Y", strtotime($date_published)) . " at " . date("g:i a", strtotime($date_published));
+        $dateEditStr = ($date_edited != $date_published) ? "Edited on " . date("F j, Y", strtotime($date_edited)) . " at " . date("g:i a", strtotime($date_edited)) . "" : "";
+        $bannerIncluded = ($photo != null) ? "style='background-image: url({$photo})'" : "";
 
         $html.= "<div id='newsPostWrapper'>"
               .     "<div id='header-img' {$bannerIncluded}></div>"
@@ -74,7 +78,6 @@ function getNewsPost($newsPostID) {
               .     "<div id='content-section'>{$contentHTML}</div>"
               . "</div>";
     }
-    $stmt->close();
 
     global $MetaDescription;
     $MetaDescription = "{$title}";
