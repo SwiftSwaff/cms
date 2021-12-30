@@ -1,4 +1,4 @@
-# cms
+# Ophidian CMS
 PHP implementation of custom, responsive, lightweight CMS
 
 Notes:
