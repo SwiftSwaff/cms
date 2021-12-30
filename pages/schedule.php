@@ -1,5 +1,5 @@
 <?php
-include getenv("DOCUMENT_ROOT") . "/db/db.php";
+require_once getenv("DOCUMENT_ROOT") . "/db/db.php";
 $MetaDescription = "The official source for the XLL schedule. Find schedule times and history.";
 
 function getSchedule($divID, $headerText) {

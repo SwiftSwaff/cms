@@ -1,6 +1,5 @@
 <?php
 include_once getenv("DOCUMENT_ROOT") . "/admin/components/logged-in.php";
-include_once getenv("DOCUMENT_ROOT") . "/db.php";
 include_once getenv("DOCUMENT_ROOT") . "/admin/components/content-helper.php";
 
 function parseXML($filename) {

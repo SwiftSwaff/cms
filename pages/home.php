@@ -1,5 +1,5 @@
 <?php
-include getenv("DOCUMENT_ROOT") . "/db/db.php";
+require_once getenv("DOCUMENT_ROOT") . "/db/db.php";
 
 //TODO: Eliminate re-use of this function shared between home.php & news.php
 function getNews($newsPostIdx, $newsPostNum, $fromAJAX) {

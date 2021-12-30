@@ -1,5 +1,5 @@
 <?php
-include getenv("DOCUMENT_ROOT") . "/db/db.php";
+require_once getenv("DOCUMENT_ROOT") . "/db/db.php";
 $MetaDescription = "View the rosters for all the XLL teams.";
 
 function getRoster($teamID, $headerText) {

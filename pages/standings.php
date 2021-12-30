@@ -1,5 +1,5 @@
 <?php
-include getenv("DOCUMENT_ROOT") . "/db/db.php";
+require_once getenv("DOCUMENT_ROOT") . "/db/db.php";
 $MetaDescription = "The official source for standings on the XLL. Get the current XLL standings now!";
 
 function getStandings($divID, $headerText) {
