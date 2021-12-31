@@ -53,19 +53,26 @@ class News extends Content {
     }
     
     protected function archive() {
-        $html = "<h1>News Archive</h1>"
-              . "<ul class='archiveList'>";
+        $html = "<h1>News Archive</h1>";
         
-        $query = "SELECT ID, Title, DatePublished FROM news ORDER BY DatePublished DESC";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($id, $title, $time);
-        while ($stmt->fetch()) {
-            $html.= "<li><a class='list-elem' href='{$this->editURL}{$id}'>[{$time}] {$title}</a></li>";
+        $sql = "SELECT id, title, date_published 
+                FROM news 
+                ORDER BY date_published DESC ";
+        $result = DB::getInstance()->preparedQuery($sql);
+        if ($result->rowCount() > 0) {
+            $html.= "<ul class='archiveList'>";
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+                $html.= "<li><a class='list-elem' href='{$this->editURL}{$id}'>[{$date_published}] {$title}</a></li>";
+            }
+            $html.= "</ul>";
         }
-        $stmt->close();
+        else {
+            $html.= "<h2>No News Articles Found</h2>";
+        }
         
-        $html.= "</ul>"
-              . "<a href='{$this->addURL}' class='addBtn'>Add News Article</a>";
+
+        $html.= "<a href='{$this->addURL}' class='addBtn'>Add News Article</a>";
         
         return $html;
     }
@@ -80,11 +87,14 @@ class News extends Content {
                 
                 $content = htmlentities($this->vars["content"], ENT_COMPAT, "UTF-8");
                 
-                $insert = "INSERT INTO news (Title, Photo, Content) VALUES (?, ?, ?) ";
-                $types = "sss";
-                $params = array($this->vars["title"], $photo, $content);
-                $stmt = DB::getInstance()->makeQuery($insert, $types, $params);
-                $stmt->close();
+                $sql = "INSERT INTO news (title, photo, content) 
+                        VALUES (:title, :photo, :content) ";
+                $params = array(
+                    ":title"   => array("type" => PDO::PARAM_STR, "value" => $this->vars["title"]),
+                    ":photo"   => array("type" => PDO::PARAM_STR, "value" => $photo),
+                    ":content" => array("type" => PDO::PARAM_STR, "value" => $content)
+                );
+                DB::getInstance()->preparedQuery($sql, $params);
             }
             header("location: {$this->archiveURL}");
             exit;
@@ -127,57 +137,63 @@ class News extends Content {
                 }
                 $content = htmlentities($this->vars["content"], ENT_COMPAT, "UTF-8");
                 
-                $update = "UPDATE news SET Title = ?, Photo = ?, Content = ? WHERE ID = ? ";
-                $types = "sssd";
-                $params = array($this->vars["title"], $photo, $content, $this->newsID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $sql = "UPDATE news 
+                        SET title = :title, photo = :photo, content = :content 
+                        WHERE id = :id ";
+                $params = array(
+                    ":title"   => array("type" => PDO::PARAM_STR, "value" => $this->vars["title"]),
+                    ":photo"   => array("type" => PDO::PARAM_STR, "value" => $photo),
+                    ":content" => array("type" => PDO::PARAM_STR, "value" => $content),
+                    ":id"      => array("type" => PDO::PARAM_INT, "value" => $this->newsID)
+                );
+                DB::getInstance()->preparedQuery($sql, $params);
             }
             header("location: {$this->archiveURL}");
             exit;
         }
         
-        $html = "";
-        $query = "SELECT Title, Photo, Content FROM news WHERE ID = ?";
-        $types = "d";
-        $params = array($this->newsID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($title, $photoDir, $content);
-        while ($stmt->fetch()) {
+        $sql = "SELECT title, photo, content 
+                FROM news 
+                WHERE id = :id";
+        $params = array(":id" => array("type" => PDO::PARAM_INT, "value" => $this->newsID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+            
             $contentHTML = addslashes(html_entity_decode($content, ENT_COMPAT, "UTF-8"));
-        
-            $html = returnToPrev($this->archiveURL, "Return to News")
-                  . "<form id='contentForm' action='{$this->editURL}{$this->newsID}' method='post'>" 
-                  .     "<div class='contentRow'>" . renderInputField("title", "text", $title, "Title") . "</div>"
-                  .     "<div class='contentRow'>" . getNewsPhoto($photoDir) . "</div>"
-                  .     "<div class='contentColumn'>"
-                  .         "<div class='contentRow'><label for='content'>Content</label></div>"
-                  .         "<textarea id='content' name='content'></textarea>"
-                  .     "</div>"
-                  .     renderSubmitBtn("contentSubmit", "Submit")
-                  . "</form>"
-                  . "<script src='https://cdn.tiny.cloud/1/7bdchqlo5d90u8szjxt4qcpc1kxa2hhu2zx1wcaz0txjuvb3/tinymce/5/tinymce.min.js' referrerpolicy='origin'></script>"
-                  . "<script>"
-                  .     "tinymce.init({"
-                  .         "selector: 'textarea',"
-                  .         "indent: false, "
-                  .         "plugins: 'link', "
-                  .         "height: 500,"
-                  .         "menubar: false,"
-                  .         "setup: function (editor) {"
-                  .             "editor.on('init', function() {"
-                  .                 "editor.setContent('{$contentHTML}');"
-                  .             "});"
-                  .             "editor.on('change', function () {"
-                  .                 "editor.save();"
-                  .             "});"
-                  .         "}"
-                  .     "});"
-                  . "</script>";
+            
+            return returnToPrev($this->archiveURL, "Return to News")
+                 . "<form id='contentForm' action='{$this->editURL}{$this->newsID}' method='post'>" 
+                 .     "<div class='contentRow'>" . renderInputField("title", "text", $title, "Title") . "</div>"
+                 .     "<div class='contentRow'>" . getNewsPhoto($photo) . "</div>"
+                 .     "<div class='contentColumn'>"
+                 .         "<div class='contentRow'><label for='content'>Content</label></div>"
+                 .         "<textarea id='content' name='content'></textarea>"
+                 .     "</div>"
+                 .     renderSubmitBtn("contentSubmit", "Submit")
+                 . "</form>"
+                 . "<script src='https://cdn.tiny.cloud/1/7bdchqlo5d90u8szjxt4qcpc1kxa2hhu2zx1wcaz0txjuvb3/tinymce/5/tinymce.min.js' referrerpolicy='origin'></script>"
+                 . "<script>"
+                 .     "tinymce.init({"
+                 .         "selector: 'textarea',"
+                 .         "indent: false, "
+                 .         "plugins: 'link', "
+                 .         "height: 500,"
+                 .         "menubar: false,"
+                 .         "setup: function (editor) {"
+                 .             "editor.on('init', function() {"
+                 .                 "editor.setContent('{$contentHTML}');"
+                 .             "});"
+                 .             "editor.on('change', function () {"
+                 .                 "editor.save();"
+                 .             "});"
+                 .         "}"
+                 .     "});"
+                 . "</script>";
         }
-        $stmt->close();
-        
-        return $html;
+        else {
+            return "<h1>This news post does not exist.</h1>";
+        }
     }
     
     protected function delete() {
@@ -186,12 +202,10 @@ class News extends Content {
             exit;
         }
         
-        $update = "DELETE FROM news WHERE ID = ? ";
-        $types = "d";
-        $params = array($this->newsID);
-        $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-        $stmt->close();
-
+        $sql = "DELETE FROM news WHERE id = :id ";
+        $params = array(":id" => array("type" => PDO::PARAM_INT, "value" => $this->newsID));
+        DB::getInstance()->preparedQuery($sql, $params);
+        
         header("location: {$this->archiveURL}");
         exit;
     }

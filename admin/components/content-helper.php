@@ -23,20 +23,23 @@ function returnToPrev($url, $text) {
     return "<div><a href='" . $url . "'>" . $text . "</a></div>";
 }
 
+// TODO: Consider re-envisioning this approach, it's too hard to follow
 function parseLeagueDivisions(...$vars) {
     $divisions = array();
-    $query = "SELECT ID, Name FROM divisions WHERE IsActive = '1'";
-    $stmt = DB::getInstance()->makeQuery($query);
-    $stmt->bind_result($divID, $divName);
-    while ($stmt->fetch()) {
-        $content = array("Name" => $divName);
-        foreach ($vars as $var) {
+    $sql = "SELECT id, name 
+            FROM divisions 
+            WHERE is_active = '1'";
+    $result = DB::getInstance()->preparedQuery($sql);
+    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+        extract($row);
+
+        $content = array("Name" => $name);
+        foreach ($vars as $var) { // for each category that is passed into the function
             $content[$var] = "";
         }
         
-        $divisions[$divID] = $content;
+        $divisions[$id] = $content;
     }
-    $stmt->close();
 
     return $divisions;
 }
@@ -48,18 +51,20 @@ function parseDivisionSelector() {
     
     $viewSelectButtons = "";
     $first = true;
-    $query = "SELECT ID, Name FROM divisions WHERE IsActive = '1'";
-    $stmt = DB::getInstance()->makeQuery($query);
-    $stmt->bind_result($divID, $divName);
-    while ($stmt->fetch()) {
+    $sql = "SELECT id, name 
+            FROM divisions 
+            WHERE is_active = '1'";
+    $result = DB::getInstance()->preparedQuery($sql);
+    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+        extract($row);
+
         $active = "";
         if ($first) {
             $active = "active";
             $first = false;
         }
-        $viewSelectButtons.= "<button class='viewSelect-btn {$active}' onclick='changeDivisionView(this, {$divID});'>{$divName}</button>";
+        $viewSelectButtons.= "<button class='viewSelect-btn {$active}' onclick='changeDivisionView(this, {$id});'>{$name}</button>";
     }
-    $stmt->close();
     
     return "<div class='viewSelect'><span>Select a Division: </span>{$viewSelectButtons}</div>";
 }

@@ -30,29 +30,29 @@ class Schedule extends Content {
         $userTeamID = $_SESSION["TeamID"];
         $divisions = parseLeagueDivisions("IncompleteHTML", "CompleteHTML");
         
-        $query = "SELECT S.ID, S.DivisionID, S.Time, S.Complete, H.Name, S.HomeTeamScore, A.Name, S.AwayTeamScore "
-               . "FROM schedule S "
-               . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-               . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-               . "INNER JOIN divisions D on D.ID = S.DivisionID "
-               . "WHERE D.IsActive = '1' "
-               . "ORDER BY S.Time ASC, S.ID ASC ";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($id, $divisionID, $time, $complete, $homeTeamName, $homeTeamScore, $awayTeamName, $awayTeamScore);
-        while ($stmt->fetch()) {
-            $dateHTML = date("F jS Y @ h:i A", strtotime($time));
-            
-            if ($complete == "No") {
-                $anchor = "<a class='list-elem' href='{$this->editURL}{$id}'>[{$dateHTML}] {$homeTeamName} vs {$awayTeamName}</a>"
+        $sql = "SELECT S.id, S.division_id, S.game_time, S.is_complete, H.Name AS home_team_name, A.Name AS away_team_name 
+                FROM schedule S 
+                INNER JOIN teams H on H.id = S.home_team_id 
+                INNER JOIN teams A on A.id = S.away_team_id 
+                INNER JOIN divisions D on D.id = S.division_id 
+                WHERE D.is_active = '1' 
+                ORDER BY S.game_time ASC, S.id ASC ";
+        $result = DB::getInstance()->preparedQuery($sql);
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+
+            $dateHTML = date("F jS Y @ h:i A", strtotime($game_time));
+        
+            if ($is_complete == "No") {
+                $anchor = "<a class='list-elem' href='{$this->editURL}{$id}'>[{$dateHTML}] {$home_team_name} vs {$away_team_name}</a>"
                         . "<a class='delBtn' href='{$this->deleteURL}{$id}'>Delete</a>";
-                $divisions[$divisionID]["IncompleteHTML"].= "<li>{$anchor}</li>";
+                $divisions[$division_id]["IncompleteHTML"].= "<li>{$anchor}</li>";
             }
             else {
-                $anchor = "<a class='list-elem' href='{$this->editURL}{$id}'>[{$dateHTML}] {$homeTeamName} vs {$awayTeamName}</a>";
-                $divisions[$divisionID]["CompleteHTML"].= "<li>{$anchor}</li>";
+                $anchor = "<a class='list-elem' href='{$this->editURL}{$id}'>[{$dateHTML}] {$home_team_name} vs {$away_team_name}</a>";
+                $divisions[$division_id]["CompleteHTML"].= "<li>{$anchor}</li>";
             }
         }
-        $stmt->close();
         
         $viewPanels = "<div class='viewPanels'>";
         $first = true;
@@ -80,11 +80,16 @@ class Schedule extends Content {
     protected function add() {
         if (isset($_POST["contentSubmit"])) {
             if ($this->validateVars()) {
-                $insert = "INSERT INTO schedule (Time, DivisionID, IsExhibition, Complete, HomeTeamID, HomeTeamScore, AwayTeamID, AwayTeamScore) VALUES (?, ?, ?, 'No', ?, '0', ?, '0') ";
-                $types = "sdddd";
-                $params = array($this->vars["datetime"], $this->vars["divisionID"], $this->vars["isExhibition"], $this->vars["homeTeamID"], $this->vars["awayTeamID"]);
-                $stmt = DB::getInstance()->makeQuery($insert, $types, $params);
-                $stmt->close();
+                $sql = "INSERT INTO schedule (game_time, division_id, is_exhibition, is_complete, home_team_id, home_team_score, away_team_id, away_team_score) 
+                        VALUES (:game_time, :division_id, :is_exhibition, 'No', :home_team_id, '0', :away_team_id, '0') ";
+                $params = array(
+                    ":game_time"     => array("type" => PDO::PARAM_STR, "value" => $this->vars["datetime"]),
+                    ":division_id"   => array("type" => PDO::PARAM_INT, "value" => $this->vars["divisionID"]),
+                    ":is_exhibition" => array("type" => PDO::PARAM_INT, "value" => $this->vars["isExhibition"]),
+                    ":home_team_id"  => array("type" => PDO::PARAM_INT, "value" => $this->vars["homeTeamID"]),
+                    ":away_team_id"  => array("type" => PDO::PARAM_INT, "value" => $this->vars["awayTeamID"])
+                );
+                DB::getInstance()->preparedQuery($sql, $params);
             }
             header("location: {$this->archiveURL}");
             exit;
@@ -97,97 +102,113 @@ class Schedule extends Content {
         }
         
         $teamOptions = "";
-        $query = "SELECT ID, Name FROM teams WHERE DivisionID = ? ORDER BY Name ASC";
-        $types = "d";
-        $params = array($divisionID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($id, $name);
-        while ($stmt->fetch()) {
-            $teamOptions.= "<option value='{$id}'>{$name}</option>";
+        $sql = "SELECT id, name 
+                FROM teams 
+                WHERE division_id = :division_id 
+                ORDER BY name ASC ";
+        $params = array(":division_id" => array("type" => PDO::PARAM_INT, "value" => $divisionID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($result->rowCount() > 0) {
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+                $teamOptions.= "<option value='{$id}'>{$name}</option>";
+            }
+
+            return returnToPrev($this->archiveURL, "Return to Schedule")
+                 . "<form id='contentForm' action='{$this->addURL}' method='post' style='width: 600px;'>"
+                 .     "<div class='contentRow'>" . renderInputField("datetime", "datetime-local", "", "Date & Time") . "</div>"
+                 .     "<div class='contentRow'>" . renderCheckbox("isExhibition", "", "Is Exhibition?") . "</div>"
+                 .     "<div class='contentRow'>"
+                 .         "<label for='homeTeamID'>Home Team</label>"
+                 .         "<select id='homeTeamID' name='homeTeamID'>{$teamOptions}</select>"
+                 .     "</div>"
+                 .     "<div class='contentRow'>"
+                 .         "<label for='awayTeamID'>Away Team</label>"
+                 .         "<select id='awayTeamID' name='awayTeamID'>{$teamOptions}</select>"
+                 .     "</div>"
+                 .     renderInputField("divisionID", "hidden", $divisionID)
+                 .     renderSubmitBtn("contentSubmit", "Submit")
+                 . "</form>";
         }
-        $stmt->close();
-        
-        $html = returnToPrev($this->archiveURL, "Return to Schedule")
-              . "<form id='contentForm' action='{$this->addURL}' method='post' style='width: 600px;'>"
-              .     "<div class='contentRow'>" . renderInputField("datetime", "datetime-local", "", "Date & Time") . "</div>"
-              .     "<div class='contentRow'>" . renderCheckbox("isExhibition", "", "Is Exhibition?") . "</div>"
-              .     "<div class='contentRow'>"
-              .         "<label for='homeTeamID'>Home Team</label>"
-              .         "<select id='homeTeamID' name='homeTeamID'>{$teamOptions}</select>"
-              .     "</div>"
-              .     "<div class='contentRow'>"
-              .         "<label for='awayTeamID'>Away Team</label>"
-              .         "<select id='awayTeamID' name='awayTeamID'>{$teamOptions}</select>"
-              .     "</div>"
-              .     renderInputField("divisionID", "hidden", $divisionID)
-              .     renderSubmitBtn("contentSubmit", "Submit")
-              . "</form>";
-        return $html;
+        else {
+            return "<h2>No divisions found - please create a division first</h2>";
+        }
     }
     
     protected function edit() {
        if (isset($_POST["contentSubmit"])) {
             if ($this->validateVars()) {
-                $update = "UPDATE schedule SET Time = ?, IsExhibition = ?, HomeTeamID = ?, AwayTeamID = ? WHERE ID = ? ";
-                $types = "sdddd";
-                $params = array($this->vars["datetime"], $this->vars["isExhibition"], $this->vars["homeTeamID"], $this->vars["awayTeamID"], $this->gameID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
+                $sql = "UPDATE schedule 
+                        SET game_time = :game_time, is_exhibition = :is_exhibition, home_team_id = :home_team_id, away_team_id = :away_team_id  
+                        WHERE id = :game_id ";
+                $params = array(
+                    ":game_time"     => array("type" => PDO::PARAM_STR, "value" => $this->vars["datetime"]),
+                    ":is_exhibition" => array("type" => PDO::PARAM_INT, "value" => $this->vars["isExhibition"]),
+                    ":home_team_id"  => array("type" => PDO::PARAM_INT, "value" => $this->vars["homeTeamID"]),
+                    ":away_team_id"  => array("type" => PDO::PARAM_INT, "value" => $this->vars["awayTeamID"]),
+                    ":game_id"       => array("type" => PDO::PARAM_INT, "value" => $this->gameID)
+                );
+                DB::getInstance()->preparedQuery($sql, $params);
             }
             header("location: {$this->archiveURL}");
             exit;
         }
         
         $teamOptions = array();
-        $query = "SELECT ID, DivisionID, Name FROM teams ORDER BY Name ASC ";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($teamID, $divisionID, $name);
-        while ($stmt->fetch()) {
-            $teamOptions[$divisionID][$teamID] = $name;
+        $sql = "SELECT id, division_id, name 
+                FROM teams 
+                ORDER BY name ASC ";
+        $result = DB::getInstance()->preparedQuery($sql);
+        if ($result->rowCount() > 0) {
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+                $teamOptions[$division_id][$id] = $name;
+            }
         }
-        $stmt->close();
+        else {
+            return "<h2>No divisions found - please create a division first</h2>";
+        }
         
         $html = "";
-        $query = "SELECT S.Time, S.DivisionID, S.IsExhibition, H.ID, H.Name, A.ID, A.Name "
-               . "FROM schedule S "
-               . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-               . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-               . "WHERE S.ID = ? ";
-        $types = "d";
-        $params = array($this->gameID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($time, $divisionID, $isExhibition, $homeTeamID, $homeTeamName, $awayTeamID, $awayTeamName);
-        while ($stmt->fetch()) {
+        $sql = "SELECT S.game_time, S.division_id, S.is_exhibition, S.home_team_id, S.away_team_id 
+                FROM schedule S 
+                INNER JOIN teams H on H.id = S.home_team_id 
+                INNER JOIN teams A on A.id = S.away_team_id 
+                WHERE S.id = :game_id ";
+        $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+
             $homeTeamOptions = "";
             $awayTeamOptions = "";
-            foreach ($teamOptions[$divisionID] as $id => $name) {
-                $selected = ($homeTeamID == $id) ? "selected" : "";
+            foreach ($teamOptions[$division_id] as $id => $name) {
+                $selected = ($home_team_id == $id) ? "selected" : "";
                 $homeTeamOptions.= "<option value='{$id}' {$selected}>{$name}</option>";
                 
-                $selected = ($awayTeamID == $id) ? "selected" : "";
+                $selected = ($away_team_id == $id) ? "selected" : "";
                 $awayTeamOptions.= "<option value='{$id}' {$selected}>{$name}</option>";
             }
-            $exhibition = ($isExhibition) ? "checked" : "";
+            $exhibition_checked = ($is_exhibition) ? "checked" : "";
             
-            $dateHTML = date("Y-m-d\TH:i", strtotime($time));
-            $html = returnToPrev($this->archiveURL, "Return to Schedule")
-                  . "<form id='contentForm' action='schedule?action=edit&id={$this->gameID}' method='post' style='width: 600px;'>"
-                  .     "<div class='contentRow'>" . renderInputField("datetime", "datetime-local", $dateHTML, "Date & Time") . "</div>"
-                  .     "<div class='contentRow'>" . renderCheckbox("isExhibition", $exhibition, "Is Exhibition?") . "</div>"
-                  .     "<div class='contentRow'>"
-                  .         "<label for='homeTeamID'>Home Team</label>"
-                  .         "<select id='homeTeamID' name='homeTeamID'>{$homeTeamOptions}</select>"
-                  .     "</div>"
-                  .     "<div class='contentRow'>"
-                  .         "<label for='awayTeamID'>Away Team</label>"
-                  .         "<select id='awayTeamID' name='awayTeamID'>{$awayTeamOptions}</select>"
-                  .     "</div>"
-                  .     renderInputField("divisionID", "hidden", $divisionID)
-                  .     renderSubmitBtn("contentSubmit", "Submit")
-                  . "</form>";
+            $dateHTML = date("Y-m-d\TH:i", strtotime($game_time));
+
+            return returnToPrev($this->archiveURL, "Return to Schedule")
+                 . "<form id='contentForm' action='schedule?action=edit&id={$this->gameID}' method='post' style='width: 600px;'>"
+                 .     "<div class='contentRow'>" . renderInputField("datetime", "datetime-local", $dateHTML, "Date & Time") . "</div>"
+                 .     "<div class='contentRow'>" . renderCheckbox("isExhibition", $exhibition_checked, "Is Exhibition?") . "</div>"
+                 .     "<div class='contentRow'>"
+                 .         "<label for='homeTeamID'>Home Team</label>"
+                 .         "<select id='homeTeamID' name='homeTeamID'>{$homeTeamOptions}</select>"
+                 .     "</div>"
+                 .     "<div class='contentRow'>"
+                 .         "<label for='awayTeamID'>Away Team</label>"
+                 .         "<select id='awayTeamID' name='awayTeamID'>{$awayTeamOptions}</select>"
+                 .     "</div>"
+                 .     renderInputField("divisionID", "hidden", $division_id)
+                 .     renderSubmitBtn("contentSubmit", "Submit")
+                 . "</form>";
         }
-        $stmt->close();
-        
-        return $html;
     }
     
     protected function delete() {
@@ -196,11 +217,9 @@ class Schedule extends Content {
             exit;
         }
         
-        $update = "DELETE FROM schedule WHERE ID = ? ";
-        $types = "d";
-        $params = array($this->gameID);
-        $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-        $stmt->close();
+        $sql = "DELETE FROM schedule WHERE id = :game_id ";
+        $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+        DB::getInstance()->preparedQuery($sql, $params);
 
         header("location: {$this->archiveURL}");
         exit;

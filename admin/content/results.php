@@ -30,71 +30,91 @@ class Results extends Content {
     }
     
     private function add_getPlayers($teamID, $position) {
-        $html = "<table><thead>";
-        if ($position == "Runner") {
-            $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>G</th><th>A</th><th>PIM</th></tr>";
+        $sql = "SELECT id AS player_id, CONCAT(first_Name, ' ', last_name) as full_name, jersey_number 
+                FROM players 
+                WHERE team_id = :team_id AND position = :position ";
+        $params = array(
+            ":team_id"  => array("type" => PDO::PARAM_INT, "value" => $teamID), 
+            ":position" => array("type" => PDO::PARAM_STR, "value" => $position)
+        );
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($result->rowCount() > 0) {
+            $html = "<table><thead>";
+            if ($position == "Runner") {
+                $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>G</th><th>A</th><th>PIM</th></tr>";
+            }
+            else {
+                $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>SV</th><th>GA</th><th>PIM</th></tr>";
+            }
+            $html.= "</thead><tbody>";
+
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+
+                $html.= "<tr>"
+                      .     "<td>{$jersey_number}" . renderInputField("playerIDs[]", "hidden", $player_id) . "</td>"
+                      .     "<td>{$full_name}" . renderInputField("{$player_id}-P", "hidden", $position) . "</td>"
+                      .     "<td>" . renderCheckbox("{$player_id}-1", "checked") . "</td>"
+                      .     "<td>" . renderInputField("{$player_id}-2", "number", 0) . "</td>"
+                      .     "<td>" . renderInputField("{$player_id}-3", "number", 0) . "</td>"
+                      .     "<td>" . renderInputField("{$player_id}-4", "number", 0) . "</td>"
+                      . "</tr>";
+            }
+            $html.= "</tbody></table>";
+            return $html;
         }
         else {
-            $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>SV</th><th>GA</th><th>PIM</th></tr>";
+            return "<h2>No players found</h2>";
         }
-        $html.= "</thead><tbody>";
-
-        $query = "SELECT P.ID, CONCAT(P.FirstName, ' ', P.LastName) as FullName, P.JerseyNumber "
-               . "FROM players P "
-               . "WHERE P.TeamID = ? AND P.Position = ? ";
-        $types = "ds";
-        $params = array($teamID, $position);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($playerID, $fullName, $jerseyNum);
-        while ($stmt->fetch()) {
-            $html.= "<tr>"
-                  .     "<td>{$jerseyNum}" . renderInputField("playerIDs[]", "hidden", $playerID) . "</td>"
-                  .     "<td>{$fullName}" . renderInputField("{$playerID}-P", "hidden", $position) . "</td>"
-                  .     "<td>" . renderCheckbox("{$playerID}-1", "checked") . "</td>"
-                  .     "<td>" . renderInputField("{$playerID}-2", "number", 0) . "</td>"
-                  .     "<td>" . renderInputField("{$playerID}-3", "number", 0) . "</td>"
-                  .     "<td>" . renderInputField("{$playerID}-4", "number", 0) . "</td>"
-                  . "</tr>";
-        }
-
-        $html.= "</tbody></table>";
-        return $html;
     }
     private function edit_getPlayers($teamID, $position) {
         $select = "";
-        $html = "<table><thead>";
         if ($position == "Runner") {
-            $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>G</th><th>A</th><th>PIM</th></tr>";
-            $select = "GD.Played, GD.Goals, GD.Assists, GD.PIM ";
+            $select = "GD.played, GD.goals AS stat_1, GD.assists AS stat_2, GD.penalty_minutes ";
         }
         else {
-            $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>SV</th><th>GA</th><th>PIM</th></tr>";
-            $select = "GD.Played, GD.Saves, GD.GoalsAgainst, GD.PIM ";
-        }
-        $html.= "</thead><tbody>";
-
-        $query = "SELECT P.ID, CONCAT(P.FirstName, ' ', P.LastName) as FullName, P.JerseyNumber, {$select} "
-               . "FROM players P "
-               . "INNER JOIN gamedata GD ON GD.PlayerID = P.ID "
-               . "WHERE GD.GameID = ? AND P.TeamID = ? AND P.Position = ?";
-        $types = "dds";
-        $params = array($this->gameID, $teamID, $position);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($playerID, $fullName, $jerseyNum, $gp, $col2, $col3, $pim);
-        while ($stmt->fetch()) {
-            $played = $gp ? "checked" : "";
-            $html.= "<tr>"
-                  .     "<td>{$jerseyNum}" . renderInputField("playerIDs[]", "hidden", $playerID) . "</td>"
-                  .     "<td>{$fullName}" . renderInputField("{$playerID}-P", "hidden", $position) . "</td>"
-                  .     "<td>" . renderCheckbox("{$playerID}-1", $played) . "</td>"
-                  .     "<td>" . renderInputField("{$playerID}-2", "number", $col2) . "</td>"
-                  .     "<td>" . renderInputField("{$playerID}-3", "number", $col3) . "</td>"
-                  .     "<td>" . renderInputField("{$playerID}-4", "number", $pim) . "</td>"
-                  . "</tr>";
+            $select = "GD.played, GD.saves AS stat_1, GD.goals_against AS stat_2, GD.penalty_minutes ";
         }
 
-        $html.= "</tbody></table>";
-        return $html;
+        $sql = "SELECT P.id AS player_id, CONCAT(P.first_name, ' ', P.last_name) as full_name, P.jersey_number, {$select} 
+                FROM players P 
+                INNER JOIN gamedata GD ON GD.player_id = P.id 
+                WHERE GD.game_id = :game_id AND P.team_id = :team_id AND P.position = :position";
+        $params = array(
+            ":game_id"  => array("type" => PDO::PARAM_INT, "value" => $this->gameID),
+            ":team_id"  => array("type" => PDO::PARAM_INT, "value" => $teamID),
+            ":position" => array("type" => PDO::PARAM_STR, "value" => $position)
+        );
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($result->rowCount() > 0) {
+            $html = "<table><thead>";
+            if ($position == "Runner") {
+                $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>G</th><th>A</th><th>PIM</th></tr>";
+            }
+            else {
+                $html.= "<tr><th>#</th><th>Name</th><th>Played?</th><th>SV</th><th>GA</th><th>PIM</th></tr>";
+            }
+            $html.= "</thead><tbody>";
+
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+
+                $did_play = $played ? "checked" : "";
+                $html.= "<tr>"
+                      .     "<td>{$jersey_number}" . renderInputField("playerIDs[]", "hidden", $player_id) . "</td>"
+                      .     "<td>{$full_name}" . renderInputField("{$player_id}-P", "hidden", $position) . "</td>"
+                      .     "<td>" . renderCheckbox("{$player_id}-1", $did_play) . "</td>"
+                      .     "<td>" . renderInputField("{$player_id}-2", "number", $stat_1) . "</td>"
+                      .     "<td>" . renderInputField("{$player_id}-3", "number", $stat_2) . "</td>"
+                      .     "<td>" . renderInputField("{$player_id}-4", "number", $penalty_minutes) . "</td>"
+                      . "</tr>";
+            }
+            $html.= "</tbody></table>";
+            return $html;
+        }
+        else {
+            return "<h2>No players found</h2>";
+        }
     }
 
     protected function archive() {
@@ -102,28 +122,36 @@ class Results extends Content {
         $userTeamID = $_SESSION["TeamID"];
         $divisions = parseLeagueDivisions("IncompleteHTML", "CompleteHTML");
         
-        $query = "SELECT S.ID, S.DivisionID, S.Time, S.Complete, H.Name, S.HomeTeamScore, A.Name, S.AwayTeamScore "
-               . "FROM schedule S "
-               . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-               . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-               . "INNER JOIN divisions D on D.ID = S.DivisionID "
-               . "WHERE D.IsActive = '1' "
-               . "ORDER BY S.Time ASC, S.ID ASC ";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($id, $divisionID, $time, $complete, $homeTeamName, $homeTeamScore, $awayTeamName, $awayTeamScore);
-        while ($stmt->fetch()) {
-            $dateHTML = date("F jS Y @ h:i A", strtotime($time));
-            
-            if ($complete == "No") {
-                $anchor = "<a class='list-elem' href='{$this->addURL}{$id}'>[{$dateHTML}] {$homeTeamName} ({$homeTeamScore}) vs {$awayTeamName} ({$awayTeamScore})</a>";
-                $divisions[$divisionID]["IncompleteHTML"].= "<li>{$anchor}</li>";
-            }
-            else {
-                $anchor = "<a class='list-elem' href='{$this->editURL}{$id}'>[{$dateHTML}] {$homeTeamName} ({$homeTeamScore}) vs {$awayTeamName} ({$awayTeamScore})</a>";
-                $divisions[$divisionID]["CompleteHTML"].= "<li>{$anchor}</li>";
+        $sql = "SELECT S.id, S.division_id, S.game_time, S.is_complete, 
+                    H.name AS home_team_name, S.home_team_score, 
+                    A.Name AS away_team_name, S.away_team_score 
+                FROM schedule S 
+                INNER JOIN teams H on H.id = S.home_team_id 
+                INNER JOIN teams A on A.id = S.away_team_id 
+                INNER JOIN divisions D on D.id = S.division_id 
+                WHERE D.is_active = '1' 
+                ORDER BY S.game_time ASC, S.id ASC ";
+         $result = DB::getInstance()->preparedQuery($sql);
+         if ($result->rowCount() > 0) {
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+
+                $dateHTML = date("F jS Y @ h:i A", strtotime($game_time));
+                
+                if ($is_complete == "No") {
+                    $anchor = "<a class='list-elem' href='{$this->addURL}{$id}'>[{$dateHTML}] {$home_team_name} ({$home_team_score}) vs {$away_team_name} ({$away_team_score})</a>";
+                    $divisions[$division_id]["IncompleteHTML"].= "<li>{$anchor}</li>";
+                }
+                else {
+                    $anchor = "<a class='list-elem' href='{$this->editURL}{$id}'>[{$dateHTML}] {$home_team_name} ({$home_team_score}) vs {$away_team_name} ({$away_team_score})</a>";
+                    $divisions[$division_id]["CompleteHTML"].= "<li>{$anchor}</li>";
+                }
             }
         }
-        
+        else {
+            return "<h2>No games found</h2>";
+        }
+
         $viewPanels = "<div class='viewPanels'>";
         $first = true;
         foreach ($divisions as $divID => $divContent) {
@@ -156,54 +184,55 @@ class Results extends Content {
             exit;
         }
         
-        $html = "";
-        $query = "SELECT S.Time, S.IsExhibition, S.DivisionID, H.ID, H.Name, A.ID, A.Name "
-               . "FROM schedule S "
-               . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-               . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-               . "WHERE S.ID = ? ";
-        $types = "d";
-        $params = array($this->gameID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($time, $isExhibition, $divisionID, $homeTeamID, $homeTeamName, $awayTeamID, $awayTeamName);
-        while ($stmt->fetch()) {
-            $homeTeamData = "<div class='contentRow v-right'>"
-                          .     "<h1>{$homeTeamName}</h1>"
-                          .     renderInputField("homeTeamScore", "number", "0") 
-                          .     renderInputField("homeTeamID", "hidden", $homeTeamID)
-                          . "</div>";
-                        
-            $awayTeamData = "<div class='contentRow v-left'>"
-                          .     renderInputField("awayTeamScore", "number", "0") 
-                          .     "<h1>{$awayTeamName}</h1>"
-                          .     renderInputField("awayTeamID", "hidden", $awayTeamID)
-                          . "</div>";
-        }
-        $stmt->close();
-        
-        $html = returnToPrev($this->archiveURL, "Return to Results")
-              . "<form id='contentForm' action='{$this->addURL}{$this->gameID}' method='post'>"
-              .     "<div class='contentRow spacer'>"
-              .         "<div class='contentColumn twoCol'>"
-              .             $homeTeamData
-              .             $this->add_getPlayers($homeTeamID, 'Runner')
-              .             $this->add_getPlayers($homeTeamID, 'Goaltender')
-              .         "</div>"
-              .         "<div class='contentColumn twoCol'>"
-              .             $awayTeamData
-              .             $this->add_getPlayers($awayTeamID, 'Runner')
-              .             $this->add_getPlayers($awayTeamID, 'Goaltender')
-              .         "</div>"
-              .     "</div>"
-              .     "<div class='contentRow v-center'>" . renderCheckbox("overtime", "", "Was Overtime Needed?") . "</div>"
-              .     renderInputField("divisionID", "hidden", $divisionID)
-              .     renderInputField("homeTeamPIM", "hidden", 0)
-              .     renderInputField("awayTeamPIM", "hidden", 0)
-              .     renderInputField("isExhibition", "hidden", $isExhibition)
-              .     renderSubmitBtn("contentSubmit", "Submit")
-              . "</form>";
+        $sql = "SELECT S.game_time, S.is_exhibition, S.division_id, 
+                    H.Name AS home_team_name, S.home_team_id, 
+                    A.Name AS away_team_name, S.away_team_id 
+                FROM schedule S 
+                INNER JOIN teams H on H.id = S.home_team_id 
+                INNER JOIN teams A on A.id = S.away_team_id  
+                WHERE S.id = :game_id ";
+        $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
 
-        return $html;
+            $homeTeamData = "<div class='contentRow v-right'>"
+                            .     "<h1>{$home_team_name}</h1>"
+                            .     renderInputField("homeTeamScore", "number", "0") 
+                            .     renderInputField("homeTeamID", "hidden", $home_team_id)
+                            . "</div>";
+                    
+            $awayTeamData = "<div class='contentRow v-left'>"
+                            .     renderInputField("awayTeamScore", "number", "0") 
+                            .     "<h1>{$away_team_name}</h1>"
+                            .     renderInputField("awayTeamID", "hidden", $away_team_id)
+                            . "</div>";
+
+            return returnToPrev($this->archiveURL, "Return to Results")
+               . "<form id='contentForm' action='{$this->addURL}{$this->gameID}' method='post'>"
+               .     "<div class='contentRow spacer'>"
+               .         "<div class='contentColumn twoCol'>"
+               .             $homeTeamData
+               .             $this->add_getPlayers($home_team_id, 'Runner')
+               .             $this->add_getPlayers($home_team_id, 'Goaltender')
+               .         "</div>"
+               .         "<div class='contentColumn twoCol'>"
+               .             $awayTeamData
+               .             $this->add_getPlayers($away_team_id, 'Runner')
+               .             $this->add_getPlayers($away_team_id, 'Goaltender')
+               .         "</div>"
+               .     "</div>"
+               .     "<div class='contentRow v-center'>" . renderCheckbox("overtime", "", "Was Overtime Needed?") . "</div>"
+               .     renderInputField("divisionID", "hidden", $division_id)
+               .     renderInputField("homeTeamPIM", "hidden", 0)
+               .     renderInputField("awayTeamPIM", "hidden", 0)
+               .     renderInputField("isExhibition", "hidden", $is_exhibition)
+               .     renderSubmitBtn("contentSubmit", "Submit")
+               . "</form>";
+        }
+        else {
+            return "<h2>Game not found</h2>";
+        }
     }
     
     protected function edit() {
@@ -219,156 +248,170 @@ class Results extends Content {
         }
         
         $html = "";
-        $query = "SELECT S.Time, S.IsExhibition, S.DivisionID, S.Overtime, H.ID, H.Name, S.HomeTeamScore, S.HomeTeamPIM, A.ID, A.Name, S.AwayTeamScore, S.AwayTeamPIM "
-               . "FROM schedule S "
-               . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-               . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-               . "WHERE S.ID = ? ";
-        $types = "d";
-        $params = array($this->gameID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($time, $isExhibition, $divisionID, $overtime, $homeTeamID, $homeTeamName, $homeTeamScore, $homeTeamPIM, $awayTeamID, $awayTeamName, $awayTeamScore, $awayTeamPIM);
-        while ($stmt->fetch()) {
+        $sql = "SELECT S.game_time, S.is_exhibition, S.division_id, S.had_overtime, 
+                    S.home_team_id, H.Name AS home_team_name, S.home_team_score, S.home_team_pim, 
+                    S.away_team_id, A.Name AS away_team_name, S.away_team_score, S.away_team_pim 
+                FROM schedule S 
+                INNER JOIN teams H on H.id = S.home_team_id 
+                INNER JOIN teams A on A.id = S.away_team_id 
+                WHERE S.id = :game_id ";
+        $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+
             $homeTeamData = "<div class='contentRow v-right'>"
-                          .     "<h1>{$homeTeamName}</h1>"
-                          .     renderInputField("homeTeamScore", "number", $homeTeamScore) 
-                          .     renderInputField("homeTeamID", "hidden", $homeTeamID)
+                          .     "<h1>{$home_team_name}</h1>"
+                          .     renderInputField("homeTeamScore", "number", $home_team_score) 
+                          .     renderInputField("homeTeamID", "hidden", $home_team_id)
                           . "</div>";
                         
             $awayTeamData = "<div class='contentRow v-left'>"
-                          .     renderInputField("awayTeamScore", "number", $awayTeamScore) 
-                          .     "<h1>{$awayTeamName}</h1>"
-                          .     renderInputField("awayTeamID", "hidden", $awayTeamID)
+                          .     renderInputField("awayTeamScore", "number", $away_team_score) 
+                          .     "<h1>{$away_team_name}</h1>"
+                          .     renderInputField("awayTeamID", "hidden", $away_team_id)
                           . "</div>";
-        }
-        $stmt->close();
 
-        $checked = ($overtime == "Yes") ? "checked" : "";
-        $html = returnToPrev($this->archiveURL, "Return to Results")
-              . "<form id='contentForm' action='{$this->editURL}{$this->gameID}' method='post'>"
-              .     "<div class='contentRow spacer'>"
-              .         "<div class='contentColumn twoCol'>"
-              .             $homeTeamData
-              .             $this->edit_getPlayers($homeTeamID, 'Runner')
-              .             $this->edit_getPlayers($homeTeamID, 'Goaltender')
-              .         "</div>"
-              .         "<div class='contentColumn twoCol'>"
-              .             $awayTeamData
-              .             $this->edit_getPlayers($awayTeamID, 'Runner')
-              .             $this->edit_getPlayers($awayTeamID, 'Goaltender')
-              .         "</div>"
-              .     "</div>"
-              .     "<div class='contentRow v-center'>" . renderCheckbox("overtime", $checked, "Was Overtime Needed?") . "</div>"
-              .     renderInputField("divisionID", "hidden", $divisionID)
-              .     renderInputField("homeTeamPIM", "hidden", 0)
-              .     renderInputField("awayTeamPIM", "hidden", 0)
-              .     renderInputField("isExhibition", "hidden", $isExhibition)
-              .     renderSubmitBtn("contentSubmit", "Submit")
-              . "</form>";
-        
-        return $html;
+            $checked = ($had_overtime == "Yes") ? "checked" : "";
+
+            return returnToPrev($this->archiveURL, "Return to Results")
+               . "<form id='contentForm' action='{$this->editURL}{$this->gameID}' method='post'>"
+               .     "<div class='contentRow spacer'>"
+               .         "<div class='contentColumn twoCol'>"
+               .             $homeTeamData
+               .             $this->edit_getPlayers($home_team_id, 'Runner')
+               .             $this->edit_getPlayers($home_team_id, 'Goaltender')
+               .         "</div>"
+               .         "<div class='contentColumn twoCol'>"
+               .             $awayTeamData
+               .             $this->edit_getPlayers($away_team_id, 'Runner')
+               .             $this->edit_getPlayers($away_team_id, 'Goaltender')
+               .         "</div>"
+               .     "</div>"
+               .     "<div class='contentRow v-center'>" . renderCheckbox("overtime", $checked, "Was Overtime Needed?") . "</div>"
+               .     renderInputField("divisionID", "hidden", $division_id)
+               .     renderInputField("homeTeamPIM", "hidden", $home_team_pim)
+               .     renderInputField("awayTeamPIM", "hidden", $away_team_pim)
+               .     renderInputField("isExhibition", "hidden", $is_exhibition)
+               .     renderSubmitBtn("contentSubmit", "Submit")
+               . "</form>";
+        }
+        else {
+            return "<h2>Game not found</h2>";
+        }
     }
     
     protected function delete() {
         //do nothing lmao
     }
     
+    // TODO: Optimize this function or replace it entirely
     public function processGameData() {
         if (!$this->vars["isExhibition"]) {
             $homeTeamID = $this->vars["homeTeamID"];
             $awayTeamID = $this->vars["awayTeamID"];
 
-            $update = "";
             $gp = $goals = $assists = $points = $saves = $ga = $pim = 0;
 
-            $insert = "INSERT INTO gamedata (GameID, PlayerID, Played, Goals, Assists, Saves, GoalsAgainst, PIM) VALUES ";
+            $sql = "INSERT INTO gamedata (game_id, player_id, played, goals, assists, saves, goals_against, penalty_minutes) VALUES ";
+
             $playerIDs = $_POST["playerIDs"];
             foreach ($playerIDs as $playerID) {
                 if ($_POST["{$playerID}-P"] == "Runner") {
-                    $gp = $_POST["{$playerID}-1"];
-                    $goals = $_POST["{$playerID}-2"];
+                    $gp      = $_POST["{$playerID}-1"];
+                    $goals   = $_POST["{$playerID}-2"];
                     $assists = $_POST["{$playerID}-3"];
-                    $points = $goals + $assists;
-                    $pim = $_POST["{$playerID}-4"];
+                    $points  = $goals + $assists;
+                    $pim     = $_POST["{$playerID}-4"];
 
-                    $insert.= "({$this->gameID}, {$playerID}, {$gp}, {$goals}, {$assists}, 0, 0, {$pim}),";
+                    $sql.= "({$this->gameID}, {$playerID}, {$gp}, {$goals}, {$assists}, 0, 0, {$pim}),";
                 }
                 else if ($_POST["{$playerID}-P"] == "Goaltender") {
-                    $gp = $_POST["{$playerID}-1"];
-                    $saves = $_POST["{$playerID}-2"];
-                    $ga = $_POST["{$playerID}-3"];
-                    $pim = $_POST["{$playerID}-4"];
+                    $gp     = $_POST["{$playerID}-1"];
+                    $saves  = $_POST["{$playerID}-2"];
+                    $ga     = $_POST["{$playerID}-3"];
+                    $pim    = $_POST["{$playerID}-4"];
 
-                    $insert.= "({$this->gameID}, {$playerID}, {$gp}, 0, 0, {$saves}, {$ga}, {$pim}),";
-                }
-                else {
-                    // shouldnt get here
+                    $sql.= "({$this->gameID}, {$playerID}, {$gp}, 0, 0, {$saves}, {$ga}, {$pim}),";
                 }
 
-                $update = "UPDATE players "
-                        . "SET GamesPlayed = GamesPlayed + ?, Goals = Goals + ?, Assists = Assists + ?, Points = Points + ?, PIM = PIM + ?, Saves = Saves + ?, GA = GA + ? "
-                        . "WHERE ID = ? ";
-                $types = "dddddddd";
-                $params = array($gp, $goals, $assists, $points, $pim, $saves, $ga, $playerID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $update = "UPDATE players 
+                           SET games_played = games_played + :gp, goals = goals + :g, assists = assists + :a, points = points + :p, 
+                            penalty_minutes = penalty_minutes + :pim, saves = saves + :sv, goals_against = goals_against + :ga 
+                           WHERE id = :player_id ";
+                $params = array(
+                    ":gp"        => array("type" => PDO::PARAM_INT, "value" => $gp),
+                    ":g"         => array("type" => PDO::PARAM_INT, "value" => $goals),
+                    ":a"         => array("type" => PDO::PARAM_INT, "value" => $assists),
+                    ":p"         => array("type" => PDO::PARAM_INT, "value" => $points),
+                    ":pim"       => array("type" => PDO::PARAM_INT, "value" => $pim),
+                    ":sv"        => array("type" => PDO::PARAM_INT, "value" => $saves),
+                    ":ga"        => array("type" => PDO::PARAM_INT, "value" => $ga),
+                    ":player_id" => array("type" => PDO::PARAM_INT, "value" => $playerID)
+                );
+                DB::getInstance()->preparedQuery($update, $params);
             }
         
-            $insert = substr($insert, 0, -1) . ";";
-            $types = "";
-            $params = array();
-            $stmt = DB::getInstance()->makeQuery($insert, $types, $params);
-            $stmt->close();
+            $sql = substr($sql, 0, -1) . ";";
+            DB::getInstance()->preparedQuery($sql);
         }
     }
 
+    // TODO: Optimize this function or replace it entirely
     public function undoGameData() {
         if (!$this->vars["isExhibition"]) {
             $oldData = array();
-            $query = "SELECT PlayerID, Played, Goals, Assists, Saves, GoalsAgainst, PIM FROM gamedata WHERE GameID = ? ";
-            $types = "d";
-            $params = array($this->gameID);
-            $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-            $stmt->bind_result($playerID, $gp, $goals, $assists, $saves, $ga, $pim);
-            while ($stmt->fetch()) {
-                $oldData[$playerID] = array(
-                    "GamesPlayed" => $gp,
+            $sql = "SELECT player_id, played, goals, assists, saves, goals_against, penalty_minutes 
+                    FROM gamedata 
+                    WHERE game_id = :game_id ";
+            $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+            $result = DB::getInstance()->preparedQuery($sql, $params);
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+
+                $oldData[$player_id] = array(
+                    "GamesPlayed" => $played,
                     "Goals"       => $goals,
                     "Assists"     => $assists,
                     "Points"      => $goals + $assists,
-                    "PIM"         => $pim,
+                    "PIM"         => $penalty_minutes,
                     "Saves"       => $saves,
-                    "GA"          => $ga
+                    "GA"          => $goals_against
                 );
             }
-            $stmt->close();
 
-            $update = "";
             $gp = $goals = $assists = $points = $saves = $ga = $pim = 0;
+
             $playerIDs = $_POST["playerIDs"];
             foreach ($playerIDs as $playerID) {
                 $gp      = $oldData[$playerID]["GamesPlayed"];
                 $goals   = $oldData[$playerID]["Goals"];
                 $assists = $oldData[$playerID]["Assists"];
                 $points  = $oldData[$playerID]["Points"];
+                $pim     = $oldData[$playerID]["PIM"];
                 $saves   = $oldData[$playerID]["Saves"];
                 $ga      = $oldData[$playerID]["GA"];
-                $pim     = $oldData[$playerID]["PIM"];
 
-                $update = "UPDATE players "
-                        . "SET GamesPlayed = GamesPlayed - ?, Goals = Goals - ?, Assists = Assists - ?, Points = Points - ?, PIM = PIM - ?, Saves = Saves - ?, GA = GA - ? "
-                        . "WHERE ID = ? ";
-                $types = "dddddddd";
-                $params = array($gp, $goals, $assists, $points, $pim, $saves, $ga, $playerID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $update = "UPDATE players 
+                           SET games_played = games_played - :gp, goals = goals - :g, assists = assists - :a, points = points - :p, 
+                            penalty_minutes = penalty_minutes - :pim, saves = saves - :sv, goals_against = goals_against - :ga 
+                           WHERE id = :player_id ";
+                $params = array(
+                    ":gp"        => array("type" => PDO::PARAM_INT, "value" => $gp),
+                    ":g"         => array("type" => PDO::PARAM_INT, "value" => $goals),
+                    ":a"         => array("type" => PDO::PARAM_INT, "value" => $assists),
+                    ":p"         => array("type" => PDO::PARAM_INT, "value" => $points),
+                    ":pim"       => array("type" => PDO::PARAM_INT, "value" => $pim),
+                    ":sv"        => array("type" => PDO::PARAM_INT, "value" => $saves),
+                    ":ga"        => array("type" => PDO::PARAM_INT, "value" => $ga),
+                    ":player_id" => array("type" => PDO::PARAM_INT, "value" => $playerID)
+                );
+                DB::getInstance()->preparedQuery($update, $params);
             }
 
-            $delete = "DELETE FROM gamedata WHERE GameID = ?";
-            $types = "d";
-            $params = array($this->gameID);
-            $stmt = DB::getInstance()->makeQuery($delete, $types, $params);
-            $stmt->close();
+            $delete = "DELETE FROM gamedata WHERE game_id = :game_id";
+            $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+            DB::getInstance()->preparedQuery($delete, $params);
         }
     }
 
@@ -382,52 +425,71 @@ class Results extends Content {
         $awayTeamPIM    = $this->vars["awayTeamPIM"];
         
         $overtimeNeeded = ($overtime == 1) ? "Yes" : "No";
-        $update = "UPDATE schedule SET Complete = 'Yes', Overtime = ?, HomeTeamScore = ?, HomeTeamPIM = ?, AwayTeamScore = ?, AwayTeamPIM = ? WHERE ID = ? ";
-        $types = "sddddd";
-        $params = array($overtimeNeeded, $homeTeamScore, $homeTeamPIM, $awayTeamScore, $awayTeamPIM, $this->gameID);
-        $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-        $stmt->close();
+        $update = "UPDATE schedule 
+                   SET is_complete = 'Yes', had_overtime = :had_overtime, 
+                    home_team_score = :home_team_score, home_team_pim = :home_team_pim, 
+                    away_team_score = :away_team_score, away_team_pim = :away_team_pim 
+                   WHERE id = :game_id ";
+        $params = array(
+            ":had_overtime"    => array("type" => PDO::PARAM_STR, "value" => $overtimeNeeded),
+            ":home_team_score" => array("type" => PDO::PARAM_INT, "value" => $homeTeamScore),
+            ":home_team_pim"   => array("type" => PDO::PARAM_INT, "value" => $homeTeamPIM),
+            ":away_team_score" => array("type" => PDO::PARAM_INT, "value" => $awayTeamScore),
+            ":away_team_pim"   => array("type" => PDO::PARAM_INT, "value" => $awayTeamPIM),
+            ":game_id"         => array("type" => PDO::PARAM_INT, "value" => $this->gameID)
+        );
+        DB::getInstance()->preparedQuery($update, $params);
 
         if (!$this->vars["isExhibition"]) {
             $homeTeamGDiff = $homeTeamScore - $awayTeamScore;
             $awayTeamGDiff = $awayTeamScore - $homeTeamScore;
 
             if ($homeTeamScore == $awayTeamScore) {
-                $update = "UPDATE standings SET Ties = Ties + 1, Points = Points + 1 WHERE TeamID IN (?, ?) ";
-                $types = "dd";
-                $params = array($homeTeamID, $awayTeamID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $update = "UPDATE standings 
+                           SET ties = ties + 1, points = points + 1 
+                           WHERE team_id IN (:home_team_id, :away_team_id) ";
+                $params = array(
+                    ":home_team_id" => array("type" => PDO::PARAM_INT, "value" => $homeTeamID),
+                    ":away_team_id" => array("type" => PDO::PARAM_INT, "value" => $awayTeamID)
+                );
+                DB::getInstance()->preparedQuery($update, $params);
             }
             else {
                 $winnerID = ($homeTeamScore > $awayTeamScore) ? $homeTeamID : $awayTeamID;
                 $loserID  = ($homeTeamScore < $awayTeamScore) ? $homeTeamID : $awayTeamID;
 
-                $update = "UPDATE standings SET Wins = Wins + 1, Points = Points + 2 WHERE TeamID = ? ";
-                $types = "d";
-                $params = array($winnerID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $update = "UPDATE standings SET wins = wins + 1, points = points + 2 WHERE team_id = :winner_id ";
+                $params = array(":winner_id" => array("type" => PDO::PARAM_INT, "value" => $winnerID));
+                DB::getInstance()->preparedQuery($update, $params);
 
-                $overtimeLoss = ($overtimeNeeded == "Yes") ? ", OTLosses = OTLosses + 1" : "";
-                $update = "UPDATE standings SET Losses = Losses + 1" . $overtimeLoss . " WHERE TeamID = ? ";
-                $types = "d";
-                $params = array($loserID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $overtimeLoss = ($overtimeNeeded == "Yes") ? ", overtime_losses = overtime_losses + 1" : "";
+                $update = "UPDATE standings SET losses = losses + 1" . $overtimeLoss . " WHERE team_id = :loser_id ";
+                $params = array(":loser_id" => array("type" => PDO::PARAM_INT, "value" => $loserID));
+                DB::getInstance()->preparedQuery($update, $params);
             }
             
-            $update = "UPDATE standings SET GF = GF + ?, GA = GA + ?, GDiff = GDiff + ?, PIM = PIM + ? WHERE TeamID = ? ";
-            $types = "ddddd";
-            $params = array($homeTeamScore, $awayTeamScore, $homeTeamGDiff, $homeTeamPIM, $homeTeamID);
-            $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-            $stmt->close();
+            $update = "UPDATE standings 
+                       SET goals_for = goals_for + :gf, goals_against = goals_against + :ga, 
+                        goal_differential = goal_differential + :gd, penalty_minutes = penalty_minutes + :pim 
+                       WHERE team_id = :team_id ";
+
+            $params = array(
+                ":gf"      => array("type" => PDO::PARAM_INT, "value" => $homeTeamScore),
+                ":ga"      => array("type" => PDO::PARAM_INT, "value" => $awayTeamScore),
+                ":gd"      => array("type" => PDO::PARAM_INT, "value" => $homeTeamGDiff),
+                ":pim"     => array("type" => PDO::PARAM_INT, "value" => $homeTeamPIM),
+                ":team_id" => array("type" => PDO::PARAM_INT, "value" => $homeTeamID)
+            );
+            DB::getInstance()->preparedQuery($update, $params);
             
-            $update = "UPDATE standings SET GF = GF + ?, GA = GA + ?, GDiff = GDiff + ?, PIM = PIM + ? WHERE TeamID = ? ";
-            $types = "ddddd";
-            $params = array($awayTeamScore, $homeTeamScore, $awayTeamGDiff, $awayTeamPIM, $awayTeamID);
-            $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-            $stmt->close();
+            $params = array(
+                ":gf"      => array("type" => PDO::PARAM_INT, "value" => $awayTeamScore),
+                ":ga"      => array("type" => PDO::PARAM_INT, "value" => $homeTeamScore),
+                ":gd"      => array("type" => PDO::PARAM_INT, "value" => $awayTeamGDiff),
+                ":pim"     => array("type" => PDO::PARAM_INT, "value" => $awayTeamPIM),
+                ":team_id" => array("type" => PDO::PARAM_INT, "value" => $awayTeamID)
+            );
+            DB::getInstance()->preparedQuery($update, $params);
         }
     }
     
@@ -440,66 +502,77 @@ class Results extends Content {
         $awayTeamScore  = 0;
         $awayTeamPIM    = 0;
         
-        $query = "SELECT S.Overtime, H.ID, S.HomeTeamScore, S.HomeTeamPIM, A.ID, S.AwayTeamScore, S.AwayTeamPIM "
-               . "FROM schedule S "
-               . "INNER JOIN teams H on H.ID = S.HomeTeamID "
-               . "INNER JOIN teams A on A.ID = S.AwayTeamID "
-               . "WHERE S.ID = ? ";
-        $types = "d";
-        $params = array($this->gameID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($ot, $hID, $hScore, $hPIM, $aID, $aScore, $aPIM);
-        while ($stmt->fetch()) {
-            $overtimeNeeded = $ot;
-            $homeTeamID     = $hID;
-            $homeTeamScore  = $hScore;
-            $homeTeamPIM    = $hPIM;
-            $awayTeamID     = $aID;
-            $awayTeamScore  = $aScore;
-            $awayTeamPIM    = $aPIM;
+        $sql = "SELECT S.had_overtime, 
+                    S.home_team_id, S.home_team_score, S.home_team_pim, 
+                    S.away_team_id, S.away_team_score, S.away_team_pim 
+                FROM schedule S 
+                INNER JOIN teams H on H.id = S.home_team_id 
+                INNER JOIN teams A on A.id = S.away_team_id 
+                WHERE S.id = :game_id ";
+        $params = array(":game_id" => array("type" => PDO::PARAM_INT, "value" => $this->gameID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+            
+            $overtimeNeeded = $had_overtime;
+            $homeTeamID     = $home_team_id;
+            $homeTeamScore  = $home_team_score;
+            $homeTeamPIM    = $home_team_pim;
+            $awayTeamID     = $away_team_id;
+            $awayTeamScore  = $away_team_score;
+            $awayTeamPIM    = $away_team_pim;
         }
-        $stmt->close();
 
         if (!$this->vars["isExhibition"]) {
             $homeTeamGDiff = $homeTeamScore - $awayTeamScore;
             $awayTeamGDiff = $awayTeamScore - $homeTeamScore;
 
             if ($homeTeamScore == $awayTeamScore) {
-                $update = "UPDATE standings SET Ties = Ties - 1, Points = Points - 1 WHERE TeamID IN (?, ?) ";
-                $types = "dd";
-                $params = array($homeTeamID, $awayTeamID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $update = "UPDATE standings 
+                           SET ties = ties - 1, points = points - 1 
+                           WHERE team_id IN (:home_team_id, :away_team_id) ";
+                $params = array(
+                    ":home_team_id" => array("type" => PDO::PARAM_INT, "value" => $homeTeamID),
+                    ":away_team_id" => array("type" => PDO::PARAM_INT, "value" => $awayTeamID)
+                );
+                DB::getInstance()->preparedQuery($update, $params);
             }
             else {
                 $winnerID = ($homeTeamScore > $awayTeamScore) ? $homeTeamID : $awayTeamID;
                 $loserID  = ($homeTeamScore < $awayTeamScore) ? $homeTeamID : $awayTeamID;
 
-                $update = "UPDATE standings SET Wins = Wins - 1, Points = Points - 2 WHERE TeamID = ? ";
-                $types = "d";
-                $params = array($winnerID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $update = "UPDATE standings SET wins = wins - 1, points = points - 2 WHERE team_id = :winner_id ";
+                $params = array(":winner_id" => array("type" => PDO::PARAM_INT, "value" => $winnerID));
+                DB::getInstance()->preparedQuery($update, $params);
 
-                $overtimeLoss = ($overtimeNeeded == "Yes") ? ", OTLosses = OTLosses - 1" : "";
-                $update = "UPDATE standings SET Losses = Losses - 1" . $overtimeLoss . " WHERE TeamID = ? ";
-                $types = "d";
-                $params = array($loserID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $overtimeLoss = ($overtimeNeeded == "Yes") ? ", overtime_losses = overtime_losses - 1" : "";
+                $update = "UPDATE standings SET losses = losses - 1" . $overtimeLoss . " WHERE team_id = :loser_id ";
+                $params = array(":loser_id" => array("type" => PDO::PARAM_INT, "value" => $loserID));
+                DB::getInstance()->preparedQuery($update, $params);
             }
             
-            $update = "UPDATE standings SET GF = GF - ?, GA = GA - ?, GDiff = GDiff - ?, PIM = PIM - ? WHERE TeamID = ? ";
-            $types = "ddddd";
-            $params = array($homeTeamScore, $awayTeamScore, $homeGDiff, $homeTeamPIM, $homeTeamID);
-            $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-            $stmt->close();
+            $update = "UPDATE standings 
+                       SET goals_for = goals_for - :gf, goals_against = goals_against - :ga, 
+                        goal_differential = goal_differential - :gd, penalty_minutes = penalty_minutes - :pim 
+                       WHERE team_id = :team_id ";
 
-            $update = "UPDATE standings SET GF = GF - ?, GA = GA - ?, GDiff = GDiff - ?, PIM = PIM - ? WHERE TeamID = ? ";
-            $types = "ddddd";
-            $params = array($awayTeamScore, $homeTeamScore, $awayTeamGDiff, $awayTeamPIM, $awayTeamID);
-            $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-            $stmt->close();
+            $params = array(
+                ":gf"      => array("type" => PDO::PARAM_INT, "value" => $homeTeamScore),
+                ":ga"      => array("type" => PDO::PARAM_INT, "value" => $awayTeamScore),
+                ":gd"      => array("type" => PDO::PARAM_INT, "value" => $homeTeamGDiff),
+                ":pim"     => array("type" => PDO::PARAM_INT, "value" => $homeTeamPIM),
+                ":team_id" => array("type" => PDO::PARAM_INT, "value" => $homeTeamID)
+            );
+            DB::getInstance()->preparedQuery($update, $params);
+            
+            $params = array(
+                ":gf"      => array("type" => PDO::PARAM_INT, "value" => $awayTeamScore),
+                ":ga"      => array("type" => PDO::PARAM_INT, "value" => $homeTeamScore),
+                ":gd"      => array("type" => PDO::PARAM_INT, "value" => $awayTeamGDiff),
+                ":pim"     => array("type" => PDO::PARAM_INT, "value" => $awayTeamPIM),
+                ":team_id" => array("type" => PDO::PARAM_INT, "value" => $awayTeamID)
+            );
+            DB::getInstance()->preparedQuery($update, $params);
         }
     }
 }

@@ -27,121 +27,133 @@ class Teams extends Content {
         $userTeamID = $_SESSION["TeamID"];
         $divisions = parseLeagueDivisions("HTML");
         
-        $query = "SELECT T.ID, T.DivisionID, T.Name "
-               . "FROM teams T "
-               . "INNER JOIN divisions D on D.ID = T.DivisionID "
-               . "WHERE D.IsActive = '1' "
-               . "ORDER BY T.Name ASC ";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($id, $divisionID, $teamName);
-        while ($stmt->fetch()) {
-            $divisions[$divisionID]["HTML"].= "<li><a class='list-elem' href='{$this->editURL}{$id}'>{$teamName}</a></li>";
-        }
-        $stmt->close();
-        
-        $viewPanels = "<div class='viewPanels'>";
-        $first = true;
-        foreach ($divisions as $divID => $divContent) {
-            if ($userDivID == 0 || $divID == $userDivID) {
-                $display = "none";
-                if ($first) {
-                    $display = "block";
-                    $first = false;
-                }
-                $viewPanels.= "<div class='viewPanel viewPanel-elem-" . $divID .  "' style='display: " . $display .";'>"
-                          .     "<span class='headerText'>Teams</span>"
-                          .     "<ul class='archiveList'>" . $divContent["HTML"] . "</ul>"
-                          . "</div>";
+        $sql = "SELECT T.id, T.division_id, T.name 
+                FROM teams T 
+                INNER JOIN divisions D on D.id = T.division_id 
+                WHERE D.is_active = '1' 
+                ORDER BY T.name ASC ";
+        $result = DB::getInstance()->preparedQuery($sql);
+        if ($result->rowCount() > 0) {
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                extract($row);
+                $divisions[$division_id]["HTML"].= "<li><a class='list-elem' href='{$this->editURL}{$id}'>{$name}</a></li>";
             }
+
+            $viewPanels = "<div class='viewPanels'>";
+            $first = true;
+            foreach ($divisions as $divID => $divContent) {
+                if ($userDivID == 0 || $divID == $userDivID) {
+                    $display = "none";
+                    if ($first) {
+                        $display = "block";
+                        $first = false;
+                    }
+                    $viewPanels.= "<div class='viewPanel viewPanel-elem-{$divID}' style='display: {$display};'>"
+                            .     "<span class='headerText'>Teams</span>"
+                            .     "<ul class='archiveList'>{$divContent["HTML"]}</ul>"
+                            . "</div>";
+                }
+            }
+            $viewPanels.= "</div>";
+            
+            return parseDivisionSelector() . $viewPanels;
         }
-        $viewPanels.= "</div>";
-        
-        return parseDivisionSelector() . $viewPanels;
+        else {
+            return "<h2>No divisions found - please create a division first</h2>";
+        }
     }
     
     protected function add() {
         if (isset($_POST["contentSubmit"])) {
             if ($this->validateVars()) {
-                $insert = "INSERT INTO teams (DivisionID, Name) VALUES (?, ?) ";
-                $types = "ds";
-                $params = array($this->vars["divisionID"], $this->vars["teamName"]);
-                $stmt = DB::getInstance()->makeQuery($insert, $types, $params);
+                $sql = "INSERT INTO teams (division_id, name) VALUES (:division_id, :team_name) ";
+                $params = array(
+                    ":division_id" => array("type" => PDO::PARAM_INT, "value" => $this->vars["divisionID"]), 
+                    ":team_name"   => array("type" => PDO::PARAM_STR, "value" => $this->vars["teamName"])
+                );
+                DB::getInstance()->preparedQuery($sql, $params);
                 
-                $insert = "INSERT INTO standings (TeamID) VALUES (?) ";
-                $types = "d";
-                $params = array($stmt->insert_id);
-                $stmt = DB::getInstance()->makeQuery($insert, $types, $params);
-                $stmt->close();
+                $team_id = DB::getInstance()->lastInsertId();
+                $sql = "INSERT INTO standings (team_id) VALUES (:team_id) ";
+                $params = array(":team_id" => array("type" => PDO::PARAM_INT, "value" => $team_id));
+                DB::getInstance()->preparedQuery($sql, $params);
             }
             header("location: {$this->archiveURL}");
             exit;
         }
         
         $divOptions = "";
-        $query = "SELECT ID, Name FROM divisions ORDER BY Name ASC";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($id, $name);
-        while ($stmt->fetch()) {
+        $sql = "SELECT id, name 
+                FROM divisions 
+                ORDER BY name ASC ";
+        $result = DB::getInstance()->preparedQuery($sql);
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
             $divOptions.= "<option value='{$id}'>{$name}</option>";
         }
-        $stmt->close();
         
-        $html = returnToPrev($this->archiveURL, "Return to Teams")
-              . "<form id='contentForm' action='{$this->addURL}' method='post'>"
-              .     "<label for='divisionID'>Division</label>"
-              .     "<select id='divisionID' name='divisionID'>{$divOptions}</select>"
-              .     renderInputField("teamName", "text", "", "Team Name")
-              .     renderSubmitBtn("contentSubmit", "Submit")
-              . "</form>";
-        return $html;
+        return returnToPrev($this->archiveURL, "Return to Teams")
+             . "<form id='contentForm' action='{$this->addURL}' method='post'>"
+             .     "<label for='divisionID'>Division</label>"
+             .     "<select id='divisionID' name='divisionID'>{$divOptions}</select>"
+             .     renderInputField("teamName", "text", "", "Team Name")
+             .     renderSubmitBtn("contentSubmit", "Submit")
+             . "</form>";
     }
     
     protected function edit() {
         if (isset($_POST["contentSubmit"])) {
             if ($this->validateVars()) {
-                $update = "UPDATE teams SET DivisionID = ?, Name = ? WHERE ID = ? ";
-                $types = "dsd";
-                $params = array($this->vars["divisionID"], $this->vars["teamName"], $this->teamID);
-                $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-                $stmt->close();
+                $sql = "UPDATE teams 
+                        SET division_id = :division_id, name = :team_name 
+                        WHERE id = :team_id ";
+                $params = array(
+                    ":division_id" => array("type" => PDO::PARAM_INT, "value" => $this->vars["divisionID"]), 
+                    ":team_name"   => array("type" => PDO::PARAM_STR, "value" => $this->vars["teamName"]), 
+                    ":team_id"     => array("type" => PDO::PARAM_INT, "value" => $this->teamID)
+                );
+                DB::getInstance()->preparedQuery($sql, $params);
             }
             header("location: {$this->archiveURL}");
             exit;
         }
         
         $divOptions = array();
-        $query = "SELECT ID, Name FROM divisions ORDER BY Name ASC";
-        $stmt = DB::getInstance()->makeQuery($query);
-        $stmt->bind_result($id, $name);
-        while ($stmt->fetch()) {
+        $sql = "SELECT id, name 
+                FROM divisions 
+                ORDER BY name ASC ";
+        $result = DB::getInstance()->preparedQuery($sql);
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
             $divOptions[$id] = $name;
         }
-        $stmt->close();
         
         $html = "";
-        $query = "SELECT DivisionID, Name FROM teams WHERE ID = ?";
-        $types = "d";
-        $params = array($this->teamID);
-        $stmt = DB::getInstance()->makeQuery($query, $types, $params);
-        $stmt->bind_result($divID, $teamName);
-        while ($stmt->fetch()) {
+        $sql = "SELECT division_id, name AS team_name
+                FROM teams 
+                WHERE id = :team_id ";
+        $params = array(":team_id" => array("type" => PDO::PARAM_INT, "value" => $this->teamID));
+        $result = DB::getInstance()->preparedQuery($sql, $params);
+        if ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+
             $divOptionsList = "";
             foreach ($divOptions as $id => $name) {
-                $selected = ($divID == $id) ? "selected" : "";
+                $selected = ($division_id == $id) ? "selected" : "";
                 $divOptionsList.= "<option value='{$id}' {$selected}>{$name}</option>";
             }
-            $html = returnToPrev($this->archiveURL, "Return to Teams")
-                  . "<form id='contentForm' action='{$this->editURL}{$this->teamID}' method='post'>"
-                  .     "<div class='contentRow'>"
-                  .         "<label for='divisionID'>Edit Division</label>"
-                  .         "<select id='divisionID' name='divisionID'>{$divOptionsList}</select>"
-                  .     "</div>"
-                  .     "<div class='contentRow'>" . renderInputField("teamName", "text", $teamName, "Edit Team Name") . "</div>"
-                  .     renderSubmitBtn("contentSubmit", "Submit")
-                  . "</form>";
-            
+            return returnToPrev($this->archiveURL, "Return to Teams")
+                 . "<form id='contentForm' action='{$this->editURL}{$this->teamID}' method='post'>"
+                 .     "<div class='contentRow'>"
+                 .         "<label for='divisionID'>Edit Division</label>"
+                 .         "<select id='divisionID' name='divisionID'>{$divOptionsList}</select>"
+                 .     "</div>"
+                 .     "<div class='contentRow'>" . renderInputField("teamName", "text", $team_name, "Edit Team Name") . "</div>"
+                 .     renderSubmitBtn("contentSubmit", "Submit")
+                 . "</form>";
         }
-        return $html;
+        else {
+
+        }
     }
     
     protected function delete() {
@@ -150,11 +162,9 @@ class Teams extends Content {
             exit;
         }
         
-        $update = "DELETE FROM teams WHERE ID = ? ";
-        $types = "d";
-        $params = array($this->teamID);
-        $stmt = DB::getInstance()->makeQuery($update, $types, $params);
-        $stmt->close();
+        $sql = "DELETE FROM teams WHERE id = :team_id ";
+        $params = array(":team_id" => array("type" => PDO::PARAM_INT, "value" => $this->teamID));
+        DB::getInstance()->preparedQuery($update, $types, $params);
 
         header("location: {$this->archiveURL}");
         exit;

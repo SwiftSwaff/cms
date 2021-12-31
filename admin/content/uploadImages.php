@@ -1,7 +1,6 @@
 <?php
 include getenv("DOCUMENT_ROOT") . "/admin/components/logged-in.php";
 include getenv("DOCUMENT_ROOT") . "/admin/components/content-helper.php";
-require_once getenv("DOCUMENT_ROOT") . "/db/db.php";
 
 $GLOBALS["BaseDirectory"] = getenv("DOCUMENT_ROOT") . "/resources/uploads/images";
 
